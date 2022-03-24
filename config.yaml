@@ -1,0 +1,57 @@
+MODEL:
+  CHECKPOINT_PATH: checkpoints/finetune/Train_epoch23_acc0.8125_.pth
+  MAC_BERT:
+    NAME: MAC_BERT
+    MODEL_PATH: data/MacBert
+    TRUNCATION: true
+    PADDING: max_length
+    MAX_LENGTH: 32
+    LEARNING_RATE: 0.00001
+  TEXT_DIM: 768
+  IMAGE_DIM: 2048
+  NUM_ATTR: 12
+
+OPTIM:
+  LR: 0.0003
+  MIN_LR: 0.000001
+  WEIGHT_DECAY: 0.005
+  WARMUP_STEPS: 3000
+  WARMUP_LR: 0.000001
+  LR_DECAY_RATE: 0.9
+
+
+TRAIN:
+  DATA_PATH_1: ./data/train_fine.txt
+  DATA_PATH_2: ./data/train_coarse.txt
+  ATTR_PATH: ./data/attr_to_attrvals.json
+  OUT_PATH: checkpoints/
+  EPOCHS: 60
+  RATIO: 0.9
+  SHUFFLE: FALSE
+  SEED: 2022
+  TRAIN_BATCH: 768
+  VAL_BATCH: 256
+  NUM_WORKERS: 4
+  LOG_STEP: 40
+
+TRAIN:
+  TRAIN_PATH: ./data/train_match.txt
+  VAL_PATH: ./data/val_match.txt
+  ATTR_PATH: ./data/attr_to_attrvals.json
+  OUT_PATH: checkpoints/
+  EPOCHS: 60
+  RATIO: 0.9
+  SHUFFLE: FALSE
+  SEED: 43
+  TRAIN_BATCH: 256
+  VAL_BATCH: 256
+  NUM_WORKERS: 4
+  LOG_STEP: 40
+  
+
+
+TEST:
+  DATA_PATH: ./data/preliminary_testA.txt
+  ATTR_PATH: ./data/attr_to_attrvals.json
+  OUT_PATH: result/val_acc_0.8398_attr_none.txt
+  CHECKPOINT_PATH: checkpoints/finetune/Adam_Train_epoch17_acc0.8398_.pth

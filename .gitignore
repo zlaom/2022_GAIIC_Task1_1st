@@ -1,0 +1,8 @@
+checkpoints/
+data/
+src/
+result/
+~/
+*.json
+*.lock
+__pycache__
