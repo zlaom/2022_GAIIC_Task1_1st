@@ -70,7 +70,7 @@ def parse_args():
     parser.add_argument(
         "--name",
         type=str,
-        default=None,
+        default="demo01",
         help="Optional identifier for the experiment when storing logs. Otherwise use current time.",
     )
     parser.add_argument(
