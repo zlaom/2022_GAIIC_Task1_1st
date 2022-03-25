@@ -1,23 +1,24 @@
 import argparse
 
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--train-data",
         type=str,
-        default="../data/processed_data/coarse_fine_noyear_sample.txt",
+        default="data/processed_data/coarse_fine_noyear.txt",
         help="Path to csv filewith training data",
     )
     parser.add_argument(
         "--val-data",
         type=str,
-        default="../data/processed_data/coarse_fine_noyear_sample.txt",
+        default="data/processed_data/train_fine_noyear.txt",
         help="Path to csv file with validation data",
     )
     parser.add_argument(
         "--attr-vals",
         type=str,
-        default="../data/attr_to_attrvals.json",
+        default="data/attr_to_attrvals.json",
         help="Path to csv file with attribute values",
     )
     parser.add_argument(
@@ -60,7 +61,7 @@ def parse_args():
         "--debug",
         default=False,
         action="store_true",
-        help="If true, more information is logged."
+        help="If true, more information is logged.",
     )
     args = parser.parse_args()
     return args

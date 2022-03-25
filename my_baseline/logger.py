@@ -8,6 +8,7 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.multiprocessing import Queue
 
+
 def setup_primary_logging(log_file, level):
     log_queue = Queue(-1)
 
@@ -15,8 +16,8 @@ def setup_primary_logging(log_file, level):
     stream_handler = logging.StreamHandler()
 
     formatter = logging.Formatter(
-        '%(asctime)s | %(levelname)s | %(message)s', 
-        datefmt='%Y-%m-%d,%H:%M:%S')
+        "%(asctime)s | %(levelname)s | %(message)s", datefmt="%Y-%m-%d,%H:%M:%S"
+    )
 
     file_handler.setFormatter(formatter)
     stream_handler.setFormatter(formatter)
@@ -30,6 +31,7 @@ def setup_primary_logging(log_file, level):
 
     return log_queue
 
+
 class WorkerLogFilter(Filter):
     def __init__(self, rank=-1):
         super().__init__()
@@ -39,7 +41,8 @@ class WorkerLogFilter(Filter):
         if self._rank != -1:
             record.msg = f"Rank {self._rank} | {record.msg}"
         return True
-        
+
+
 def setup_worker_logging(rank, log_queue, level):
     queue_handler = QueueHandler(log_queue)
 

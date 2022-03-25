@@ -2,14 +2,16 @@ import enum
 import json
 import itertools
 
+
 def load_attr_dict(file):
     # 读取属性字典
-    with open(file, 'r') as f:
+    with open(file, "r") as f:
         attr_dict = {}
         for attr, attrval_list in json.load(f).items():
-            attrval_list = list(map(lambda x: x.split('='), attrval_list))
+            attrval_list = list(map(lambda x: x.split("="), attrval_list))
             attr_dict[attr] = list(itertools.chain.from_iterable(attrval_list))
     return attr_dict
+
 
 def load_attr_list(file):
     # 读取属性字典
@@ -17,7 +19,7 @@ def load_attr_list(file):
     attr_list = []
     for key, value in attr_dict.items():
         for v in value:
-            attr_list.append('{}{}'.format(key, v))
+            attr_list.append("{}{}".format(key, v))
     return attr_list
 
 
