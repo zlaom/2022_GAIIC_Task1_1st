@@ -60,7 +60,7 @@ def evaluate(model, dataloader, args):
             labels = labels.cuda(args.gpu, non_blocking=True).float()
             predicts = model(images)
             predict_tags = predicts > 0.5
-            acc_predict += torch.sum(predict_tags == labels)
+            acc_predict += torch.sum(predict_tags[labels == 1] == 1)
             all_attr += torch.sum(labels)
     acc = acc_predict / all_attr
     return acc

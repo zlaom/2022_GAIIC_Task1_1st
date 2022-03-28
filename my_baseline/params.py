@@ -4,15 +4,21 @@ import argparse
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--name",
+        type=str,
+        default="demo02",
+        help="Optional identifier for the experiment when storing logs. Otherwise use current time.",
+    )
+    parser.add_argument(
         "--train-data",
         type=str,
-        default="data/processed_data/coarse_fine_noyear.txt",
+        default="data/processed_data/train_fine_noyear.txt",
         help="Path to csv filewith training data",
     )
     parser.add_argument(
         "--val-data",
         type=str,
-        default="data/processed_data/train_fine_noyear.txt",
+        default="data/processed_data/coarse_fine_noyear.txt",
         help="Path to csv file with validation data",
     )
     parser.add_argument(
@@ -35,12 +41,6 @@ def parse_args():
         help="Where to store tensorboard logs. Use None to avoid storing logs.",
     )
     parser.add_argument(
-        "--name",
-        type=str,
-        default="demo",
-        help="Optional identifier for the experiment when storing logs. Otherwise use current time.",
-    )
-    parser.add_argument(
         "--workers", type=int, default=1, help="Number of workers per GPU."
     )
     parser.add_argument(
@@ -59,7 +59,7 @@ def parse_args():
     )
     parser.add_argument(
         "--debug",
-        default=False,
+        default=True,
         action="store_true",
         help="If true, more information is logged.",
     )

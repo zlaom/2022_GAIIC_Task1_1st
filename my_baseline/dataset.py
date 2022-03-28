@@ -28,7 +28,7 @@ class JsonMultiTagsDataset(Dataset):
                         item["label"] = label
                         self.items.append(item)
 
-        logging.debug("Done loading data.")
+        logging.debug("Done loading data. Data num: {}".format(len(self.items)))
 
     def __len__(self):
         return len(self.items)
