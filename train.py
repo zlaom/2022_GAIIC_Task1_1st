@@ -1,3 +1,4 @@
+from cProfile import label
 import json
 import os
 import sys
@@ -17,7 +18,7 @@ from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.tensorboard import SummaryWriter
 from utils.utils import warmup_lr_schedule, step_lr_schedule
 from data_pre.dataset import GaiicDataset
-from models.gaiic_model import BLIP_Model
+from models.gaiic_model import BLIP_Model, ITM_Model
 
 
         
@@ -39,41 +40,34 @@ def set_seed_logger(dataset_cfg):
 
 
 def init_model(model_cfg, device):
-    model = BLIP_Model(model_cfg)
-    
+    model = ITM_Model(model_cfg)
     model = model.to(device)
     return model
 
 
 def get_dataloader(dataset_cfg):
     
-    data_path_1 = dataset_cfg['DATA_PATH_1']
-    data_path_2 = dataset_cfg['DATA_PATH_2']
+    data_path_1 = dataset_cfg['POS_DATA_PATH']
+    data_path_2 = dataset_cfg['NEG_DATA_PATH']
     
-    data_pos_list = []
-    data_neg_list = []
+    data_list = []
 
     with open(data_path_1, 'r', encoding='utf-8') as f:
         lines = f.readlines()
         for line in lines:
             data = json.loads(line)
-            if data['match']['图文'] == 1:
-                data_pos_list.append(data)
-            else:
-                data_neg_list.append(data)
+            data_list.append(data)
     
     with open(data_path_2, 'r', encoding='utf-8') as f:
         lines = f.readlines()
         for line in lines:
             data = json.loads(line)
-            if data['match']['图文'] == 1:
-                data_pos_list.append(data)
-            else:
-                data_neg_list.append(data)
-    
-    x_train_list = data_pos_list[:len(data_pos_list)-len(data_neg_list)]
-    x_val_list = data_pos_list[len(data_pos_list)-len(data_neg_list):] + data_neg_list
-    np.random.shuffle(x_val_list)
+            data_list.append(data)
+    l = int(len(data_list) * dataset_cfg['RATIO'])
+    np.random.shuffle(data_list)
+    x_train_list = data_list[:l]
+    x_val_list = data_list[l:]
+
     train_dataset = GaiicDataset(x_train_list,)
     val_dataset = GaiicDataset(x_val_list,)
 
@@ -107,7 +101,7 @@ def match_correct(output, labels, threshold=0.):
     return sum(correct_1 + correct_0)
 
 
-def train_epoch(epoch, model, train_dataloader, train_num, optimizer, device):
+def train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn, device):
     torch.cuda.empty_cache()
     model.train()
     
@@ -120,11 +114,11 @@ def train_epoch(epoch, model, train_dataloader, train_num, optimizer, device):
         # alpha = alpha*min(1,(epoch*len(train_dataloader)+step)/(2*len(train_dataloader)))
 
         image, text = all_dic['feature'], all_dic['title']
-        
+        label = torch.from_numpy(np.array(all_dic['match_label'])).to(device).long()
         image = torch.stack(image, dim=1).to(device).float()
-        loss, output, label = model(image, text, alpha, mode='train')
+        output, _ = model(image, text)
         _, predicted = torch.max(output.data, 1)
-        
+        loss = loss_fn(output, label)
         total += label.size(0)
         correct += (predicted == label).sum()
         loss.backward()
@@ -148,10 +142,10 @@ def test_epoch(model, val_dataloader, loss_fn, device):
 
     with torch.no_grad():
         for step, all_dic in enumerate(val_dataloader):
-            image, text, label = all_dic['feature'], all_dic['title'], all_dic['label']
+            image, text, label = all_dic['feature'], all_dic['title'], all_dic['match_label']
             label = torch.from_numpy(np.array(label)).to(device).long()
             image = torch.stack(image, dim=1).to(device).float()
-            output = model(image, text, alpha, mode='test')
+            output,_ = model(image, text)
             
             _, predicted = torch.max(output.data, 1)
             total += label.size(0)
@@ -159,7 +153,7 @@ def test_epoch(model, val_dataloader, loss_fn, device):
             # print(correct, total)
             loss = loss_fn(output, label)
             val_loss_list.append(loss.item())
-            break
+            
         
     # print(correct.item() / total)
     return np.mean(val_loss_list), correct.item() / total
@@ -187,7 +181,7 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
     for epoch in range(dataset_cfg['EPOCHS']):
         step_lr_schedule(optimizer, epoch, optim_cfg['LR'], optim_cfg['MIN_LR'], optim_cfg['WEIGHT_DECAY'])
         # test_epoch(model, val_dataloader, loss_fn_1, device)
-        train_loss = train_epoch(epoch, model, train_dataloader, train_num, optimizer,  device)
+        train_loss = train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn_1,  device)
         val_loss, acc = test_epoch(model, val_dataloader, loss_fn_1, device)
         writer.add_scalar(f'CE/train', train_loss, epoch)
         writer.add_scalar(f'ACC/val', acc, epoch)

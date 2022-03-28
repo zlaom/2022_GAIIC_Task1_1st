@@ -61,6 +61,7 @@ class ITM_Model(nn.Module):
         self.bert_linear = nn.Linear(text_dim, 256)
         self.dropout = nn.Dropout(0.1)
         self.itm_head = nn.Linear(512, 2)
+        self.attr_head = nn.Linear(512, 12)
     
     def forward(self, image, text):
 
@@ -69,9 +70,10 @@ class ITM_Model(nn.Module):
         text = self.bert_linear(text)
         feature = torch.cat([image, text], dim=-1)
         feature = self.dropout(feature)
-        logits = self.itm_head(feature)
-
-        return logits
+        logits_itm = self.itm_head(feature)
+        logits_attr = self.attr_head(feature)
+        return logits_itm, torch.sigmoid(logits_attr)
+        
 
 class BLIP_Model(nn.Module):
     def __init__(self, cfg, mode='pretrain', momentum=0.3):

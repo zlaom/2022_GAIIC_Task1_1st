@@ -20,7 +20,7 @@ OPTIM:
   LR_DECAY_RATE: 0.9
 
 
-TRAIN:
+PRETRAIN:
   DATA_PATH_1: ./data/train_fine.txt
   DATA_PATH_2: ./data/train_coarse.txt
   ATTR_PATH: ./data/attr_to_attrvals.json
@@ -35,15 +35,15 @@ TRAIN:
   LOG_STEP: 40
 
 TRAIN:
-  TRAIN_PATH: ./data/train_match.txt
-  VAL_PATH: ./data/val_match.txt
+  POS_DATA_PATH: ./data/train_fine.txt
+  NEG_DATA_PATH: ./data/neg_fine.txt
   ATTR_PATH: ./data/attr_to_attrvals.json
   OUT_PATH: checkpoints/
   EPOCHS: 60
   RATIO: 0.9
   SHUFFLE: FALSE
   SEED: 43
-  TRAIN_BATCH: 256
+  TRAIN_BATCH: 512
   VAL_BATCH: 256
   NUM_WORKERS: 4
   LOG_STEP: 40
@@ -53,5 +53,5 @@ TRAIN:
 TEST:
   DATA_PATH: ./data/preliminary_testA.txt
   ATTR_PATH: ./data/attr_to_attrvals.json
-  OUT_PATH: result/val_acc_0.8398_attr_none.txt
-  CHECKPOINT_PATH: checkpoints/finetune/Adam_Train_epoch17_acc0.8398_.pth
+  OUT_PATH: result/loss0.206_acc_0.9157_attr_none.txt
+  CHECKPOINT_PATH: checkpoints/train/Train_epoch52_acc0.9157_.pth

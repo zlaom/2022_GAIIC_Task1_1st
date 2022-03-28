@@ -59,7 +59,7 @@ if __name__ == '__main__':
     parser.add_argument('--cfg_file', type=str, default='config.yaml', help='Path of config files')
     args = parser.parse_args()
     yaml_path = args.cfg_file
-    os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+    os.environ["CUDA_VISIBLE_DEVICES"] = '2'
     with open(yaml_path, 'r', encoding='utf-8') as f:
         config = yaml.load(f.read(), Loader=yaml.FullLoader)
     test_config = config['TEST']
@@ -101,7 +101,7 @@ if __name__ == '__main__':
             features = features.cuda()
             
             with torch.no_grad():
-                output = model(features, texts)
+                output, _ = model(features, texts)
                 output = output.cpu().tolist()
 
             dic = {}

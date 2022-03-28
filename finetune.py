@@ -10,7 +10,7 @@ import argparse
 import numpy as np
 import scipy.io as scio
 import random
-os.environ["CUDA_VISIBLE_DEVICES"] = '3'
+os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import _LRScheduler
@@ -18,6 +18,74 @@ from torch.utils.tensorboard import SummaryWriter
 from utils.utils import warmup_lr_schedule, step_lr_schedule
 from data_pre.dataset import GaiicDataset
 from models.gaiic_model import BLIP_Model, ITM_Model
+import torch.nn.functional as F
+
+from torch.autograd import Variable
+
+class FocalLoss(nn.Module):
+    r"""
+        This criterion is a implemenation of Focal Loss, which is proposed in 
+        Focal Loss for Dense Object Detection.
+
+            Loss(x, class) = - \alpha (1-softmax(x)[class])^gamma \log(softmax(x)[class])
+
+        The losses are averaged across observations for each minibatch.
+
+        Args:
+            alpha(1D Tensor, Variable) : the scalar factor for this criterion
+            gamma(float, double) : gamma > 0; reduces the relative loss for well-classiﬁed examples (p > .5), 
+                                   putting more focus on hard, misclassiﬁed examples
+            size_average(bool): By default, the losses are averaged over observations for each minibatch.
+                                However, if the field size_average is set to False, the losses are
+                                instead summed for each minibatch.
+
+
+    """
+    def __init__(self, class_num=2, alpha=None, gamma=2, size_average=True):
+        super(FocalLoss, self).__init__()
+        if alpha is None:
+            self.alpha = Variable(torch.ones(class_num, 1))
+        else:
+            if isinstance(alpha, Variable):
+                self.alpha = alpha
+            else:
+                self.alpha = Variable(alpha)
+        self.gamma = gamma
+        self.class_num = class_num
+        self.size_average = size_average
+
+    def forward(self, inputs, targets):
+        N = inputs.size(0)
+        C = inputs.size(1)
+        P = F.softmax(inputs)
+
+        class_mask = inputs.data.new(N, C).fill_(0)
+        class_mask = Variable(class_mask)
+        ids = targets.view(-1, 1)
+        class_mask.scatter_(1, ids.data, 1.)
+        #print(class_mask)
+
+
+        if inputs.is_cuda and not self.alpha.is_cuda:
+            self.alpha = self.alpha.cuda()
+        alpha = self.alpha[ids.data.view(-1)]
+
+        probs = (P*class_mask).sum(1).view(-1,1)
+
+        log_p = probs.log()
+        #print('probs size= {}'.format(probs.size()))
+        #print(probs)
+
+        batch_loss = -alpha*(torch.pow((1-probs), self.gamma))*log_p 
+        #print('-----bacth_loss------')
+        #print(batch_loss)
+
+
+        if self.size_average:
+            loss = batch_loss.mean()
+        else:
+            loss = batch_loss.sum()
+        return loss
 
 
         
@@ -49,6 +117,7 @@ def init_model(model_cfg, device):
 
 def get_dataloader(dataset_cfg):
     
+
     data_path_1 = dataset_cfg['TRAIN_PATH']
     data_path_2 = dataset_cfg['VAL_PATH']
     
@@ -151,8 +220,9 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
     num_train_optimization_steps = len(train_dataloader) * dataset_cfg['EPOCHS']
     
     # optimizer = torch.optim.AdamW(params=model.parameters(), lr=optim_cfg['LR'], weight_decay=optim_cfg['WEIGHT_DECAY'])
-    optimizer = torch.optim.Adam(params=model.parameters(), lr=0.0001, weight_decay= 0.0005)
+    optimizer = torch.optim.Adam(params=model.parameters(), lr=0.0001, weight_decay= 0.005)
     loss_fn_1 = nn.CrossEntropyLoss().cuda()
+    # loss_fn_1 = FocalLoss().cuda()
     logging.info('Dataset config = %s', str(dict(dataset_cfg)))
     logging.info('Train num = %d', train_num)
     logging.info('Test num = %d', val_num)
@@ -170,7 +240,7 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
                      train_loss, val_loss, acc)
         
         torch.save(model.state_dict(),
-                os.path.join(output_folder, 'Adam_Train_epoch{:}_acc{:.4f}_.pth'.format(epoch, acc)))
+                os.path.join(output_folder, 'NEW_Train_epoch{:}_loss{:.4f}_acc{:.4f}_.pth'.format(epoch,val_loss, acc)))
         
 
 

@@ -37,7 +37,7 @@ val_ret = []
 for dic in x_train_list:
     pre_ret.append(json.dumps(dic, ensure_ascii=False)+'\n')
 
-l = len(x_val_list)-4000
+l = len(x_val_list)-1000
 for i in range(l):
     dic = x_val_list[i]
     train_ret.append(json.dumps(dic, ensure_ascii=False)+'\n')

@@ -21,18 +21,19 @@ data
 ├── train_math.txt
 ├── val_math.txt
 └── train_fine.txt
+└── neg_fine.txt
 ```
 分别为属性字典文件、测试文件、粗标数据、细标数据。
 
 
-生成训练集和验证集：
+生成5w的负例：
 ```
-python generate_dataset.py
+analyze.ipynb
 ```
 
 训练
 ```
-python finetune.py
+python train.py
 ```
 
 测试
