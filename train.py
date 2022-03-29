@@ -19,7 +19,7 @@ from torch.utils.tensorboard import SummaryWriter
 from utils.utils import warmup_lr_schedule, step_lr_schedule
 from data_pre.dataset import GaiicDataset
 from models.gaiic_model import BLIP_Model, ITM_Model
-
+import tqdm
 
         
 def set_seed_logger(dataset_cfg):
@@ -100,12 +100,30 @@ def match_correct(output, labels, threshold=0.):
     
     return sum(correct_1 + correct_0)
 
+def get_attr_loss(attr_logits, attr_index, attr_label, loss_fn):
+    loss = 0.
+    total = 0
+    correct = 0
+    for i in range(12):
+        indices = attr_index[:, i]
+        single_logits = attr_logits[i][indices == True]
+        single_lable = attr_label[:, i][indices == True]
+        if single_logits.shape[0] == 0:
+            continue
+        single_loss = loss_fn(single_logits, single_lable)
+        _, predicted = torch.max(single_logits.data, 1)
+        total += single_lable.size(0)
+        correct += (predicted == single_lable).sum()
+        loss += single_loss
+
+    return loss / 12, correct.item() / total
 
 def train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn, device):
     torch.cuda.empty_cache()
     model.train()
     
     train_loss_list = []
+    train_attr_acc_list = []
     total, correct = 0., 0.
     for step, all_dic in enumerate(train_dataloader):
         optimizer.zero_grad()
@@ -114,11 +132,15 @@ def train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn, d
         # alpha = alpha*min(1,(epoch*len(train_dataloader)+step)/(2*len(train_dataloader)))
 
         image, text = all_dic['feature'], all_dic['title']
+        attr_label, attr_index = all_dic['attr_labels'].to(device).long(), all_dic['attr_index'].to(device)
         label = torch.from_numpy(np.array(all_dic['match_label'])).to(device).long()
         image = torch.stack(image, dim=1).to(device).float()
-        output, _ = model(image, text)
+        output, attr_logits = model(image, text)
+
         _, predicted = torch.max(output.data, 1)
-        loss = loss_fn(output, label)
+        attr_loss, attr_acc = get_attr_loss(attr_logits, attr_index, attr_label, loss_fn)
+        train_attr_acc_list.append(attr_acc)
+        loss = loss_fn(output, label) + attr_loss
         total += label.size(0)
         correct += (predicted == label).sum()
         loss.backward()
@@ -126,9 +148,9 @@ def train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn, d
         
         train_loss_list.append(loss.item() * image.size(0))
         if (step + 1) % dataset_cfg['LOG_STEP'] == 0:
-            logging.info('  Epoch: %d/%s, Step: %d/%d, Train_Loss: %f, Train_Acc: %f',
+            logging.info('  Epoch: %d/%s, Step: %d/%d, Train_Loss: %f, Train_match_Acc: %f, Train_Acc: %f',
                          epoch + 1, dataset_cfg['EPOCHS'], step + 1, len(train_dataloader),
-                         loss.item(), correct/total)
+                         loss.item(), correct/total, (correct/total + np.mean(train_attr_acc_list)) / 2)
 
     train_loss = sum(train_loss_list) / train_num
     return train_loss
@@ -139,24 +161,28 @@ def test_epoch(model, val_dataloader, loss_fn, device):
     model.eval()
     val_loss_list = []
     total, correct = 0., 0.
-
+    val_attr_acc_list = []
     with torch.no_grad():
-        for step, all_dic in enumerate(val_dataloader):
-            image, text, label = all_dic['feature'], all_dic['title'], all_dic['match_label']
-            label = torch.from_numpy(np.array(label)).to(device).long()
+        for step, all_dic in tqdm.tqdm(enumerate(val_dataloader)):
+            image, text = all_dic['feature'], all_dic['title']
+            attr_label, attr_index = all_dic['attr_labels'].to(device).long(), all_dic['attr_index'].to(device)
+            label = torch.from_numpy(np.array(all_dic['match_label'])).to(device).long()
             image = torch.stack(image, dim=1).to(device).float()
-            output,_ = model(image, text)
-            
+            output, attr_logits = model(image, text)
+
             _, predicted = torch.max(output.data, 1)
+            attr_loss, attr_acc = get_attr_loss(attr_logits, attr_index, attr_label, loss_fn)
+            val_attr_acc_list.append(attr_acc)
+            
             total += label.size(0)
             correct += (predicted == label).sum()
             # print(correct, total)
-            loss = loss_fn(output, label)
+            loss = loss_fn(output, label) + attr_loss
             val_loss_list.append(loss.item())
             
         
     # print(correct.item() / total)
-    return np.mean(val_loss_list), correct.item() / total
+    return np.mean(val_loss_list), correct.item() / total, (correct.item() / total + np.mean(val_attr_acc_list)) / 2.0
 
 
 def train(model_cfg, dataset_cfg, optim_cfg, device):
@@ -182,16 +208,16 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
         step_lr_schedule(optimizer, epoch, optim_cfg['LR'], optim_cfg['MIN_LR'], optim_cfg['WEIGHT_DECAY'])
         # test_epoch(model, val_dataloader, loss_fn_1, device)
         train_loss = train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn_1,  device)
-        val_loss, acc = test_epoch(model, val_dataloader, loss_fn_1, device)
+        val_loss, match_acc, acc = test_epoch(model, val_dataloader, loss_fn_1, device)
         writer.add_scalar(f'CE/train', train_loss, epoch)
         writer.add_scalar(f'ACC/val', acc, epoch)
         
-        logging.info(' Train Epoch %d/%s Finished | Train Loss: %f | Val loss: %f | All acc: %f',
+        logging.info(' Train Epoch %d/%s Finished | Train Loss: %f | Val loss: %f | match acc: %f | All acc: %f',
                      epoch + 1, dataset_cfg['EPOCHS'], 
-                     train_loss, val_loss, acc)
+                     train_loss, val_loss, match_acc, acc)
         
         torch.save(model.state_dict(),
-                os.path.join(output_folder, 'Train_epoch{:}_acc{:.4f}_.pth'.format(epoch, acc)))
+                os.path.join(output_folder, 'NEW_Train_epoch{:}_match_acc{:.4f}_all_acc{:.4f}_.pth'.format(epoch, match_acc, acc)))
         
 
 

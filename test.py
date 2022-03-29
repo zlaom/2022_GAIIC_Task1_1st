@@ -54,6 +54,19 @@ def get_match(image_names, query, cos, logits, attr_dic, cos_threshold=0.6, logi
             }
     return ret
 
+
+def get_match_attr(query, attr_dic, all_logits):
+    all_logits = [x.cpu().tolist() for x in all_logits]
+    new_dic = {}
+    for key in query:
+        index = attr_dic[key]
+        single_logits = all_logits[index]
+        if single_logits[0][1] > single_logits[0][0]:
+            new_dic[key] = 1
+        else:
+            new_dic[key] = 0
+    
+    return new_dic
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Feature Compression Reconstruction')
     parser.add_argument('--cfg_file', type=str, default='config.yaml', help='Path of config files')
@@ -92,34 +105,34 @@ if __name__ == '__main__':
     count = 0
     with open(data_path, 'r', encoding='utf-8') as f:
         for i, data in enumerate(tqdm.tqdm(f)):
-            
             data = json.loads(data)
             feature = np.array(data['feature']).astype(np.float32)
-            texts = [data['title'] if a=='图文' else a for a in data['query']]
-            features = torch.from_numpy(feature)[None, ].repeat(len(texts), 1)
-            
+            texts = data['title']
+            features = torch.from_numpy(feature)
+            new_query = []
+            for key in data['query']:
+                if key == '图文':
+                    continue
+                new_query.append(key)
             features = features.cuda()
-            
+            features = features.unsqueeze(0)
             with torch.no_grad():
-                output, _ = model(features, texts)
+                output, attr_logits = model(features, texts)
                 output = output.cpu().tolist()
-
+            attr_match_dic = get_match_attr(new_query, attr_dic, attr_logits)
+            # print(attr_match_dic)
             dic = {}
             if output[0][1] > output[0][0]:
                 for key in data['query']:
                     dic[key] = 1
                 count += 1
             else:
-                for k, v in zip(data['query'], output):
-                    if k == '图文':
-                        dic[k] = 0
-                    else:
-                        if v[1] > v[0]:
-                            # 细分好像不太行 ？
-                            dic[k] = 0
-                        else:
-                            dic[k] = 0
-
+                for key in data['query']:
+                    dic[key] = 0
+            if dic['图文'] == 0:
+                for key, val in attr_match_dic.items():
+                    dic[key] = val
+            
             ret = {
                 "img_name": data["img_name"],
                 "match": dic

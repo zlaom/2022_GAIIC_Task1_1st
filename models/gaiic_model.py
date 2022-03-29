@@ -61,8 +61,9 @@ class ITM_Model(nn.Module):
         self.bert_linear = nn.Linear(text_dim, 256)
         self.dropout = nn.Dropout(0.1)
         self.itm_head = nn.Linear(512, 2)
-        self.attr_head = nn.Linear(512, 12)
-    
+        self.attr_head_list = nn.ModuleList()
+        for i in range(12):
+            self.attr_head_list.append(nn.Linear(512, 2))
     def forward(self, image, text):
 
         image = self.image_linear(image)
@@ -71,8 +72,11 @@ class ITM_Model(nn.Module):
         feature = torch.cat([image, text], dim=-1)
         feature = self.dropout(feature)
         logits_itm = self.itm_head(feature)
-        logits_attr = self.attr_head(feature)
-        return logits_itm, torch.sigmoid(logits_attr)
+        logits_attr_list = []
+        for i in range(12):
+            logits_attr_list.append(self.attr_head_list[i](feature))
+
+        return logits_itm, logits_attr_list
         
 
 class BLIP_Model(nn.Module):

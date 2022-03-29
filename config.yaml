@@ -13,10 +13,10 @@ MODEL:
 
 OPTIM:
   LR: 0.0003
-  MIN_LR: 0.000001
+  MIN_LR: 0.00001
   WEIGHT_DECAY: 0.005
   WARMUP_STEPS: 3000
-  WARMUP_LR: 0.000001
+  WARMUP_LR: 0.00001
   LR_DECAY_RATE: 0.9
 
 
@@ -53,5 +53,5 @@ TRAIN:
 TEST:
   DATA_PATH: ./data/preliminary_testA.txt
   ATTR_PATH: ./data/attr_to_attrvals.json
-  OUT_PATH: result/loss0.206_acc_0.9157_attr_none.txt
-  CHECKPOINT_PATH: checkpoints/train/Train_epoch52_acc0.9157_.pth
+  OUT_PATH: result/NEW_Train_epoch9_match_acc0.8961_all_acc0.9052_.pth_attr_pred.txt
+  CHECKPOINT_PATH: checkpoints/train/NEW_Train_epoch9_match_acc0.8961_all_acc0.9052_.pth
