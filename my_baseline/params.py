@@ -6,19 +6,19 @@ def parse_args():
     parser.add_argument(
         "--name",
         type=str,
-        default="demo02",
+        default="demo04",
         help="Optional identifier for the experiment when storing logs. Otherwise use current time.",
     )
     parser.add_argument(
         "--train-data",
         type=str,
-        default="data/processed_data/train_fine_noyear.txt",
+        default="data/processed_data/coarse_fine_noyear.txt",
         help="Path to csv filewith training data",
     )
     parser.add_argument(
         "--val-data",
         type=str,
-        default="data/processed_data/coarse_fine_noyear.txt",
+        default="data/processed_data/train_fine_noyear.txt",
         help="Path to csv file with validation data",
     )
     parser.add_argument(
