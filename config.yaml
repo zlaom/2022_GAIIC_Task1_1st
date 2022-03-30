@@ -53,5 +53,5 @@ TRAIN:
 TEST:
   DATA_PATH: ./data/preliminary_testA.txt
   ATTR_PATH: ./data/attr_to_attrvals.json
-  OUT_PATH: result/NEW_Train_epoch9_match_acc0.8961_all_acc0.9052_.pth_attr_pred.txt
-  CHECKPOINT_PATH: checkpoints/train/NEW_Train_epoch9_match_acc0.8961_all_acc0.9052_.pth
+  OUT_PATH: result/RATIO_Train_epoch10_match_acc0.8779_all_acc0.8833_.txt
+  CHECKPOINT_PATH: checkpoints/train/RATIO_Train_epoch10_match_acc0.8779_all_acc0.8833_.pth

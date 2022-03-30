@@ -34,6 +34,7 @@ class TestDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.data)
 
+
 def get_match(image_names, query, cos, logits, attr_dic, cos_threshold=0.6, logits_threshold=0.5):
     dic = {}
     attr_index = {v:k for k, v in attr_dic.items()}
@@ -56,6 +57,7 @@ def get_match(image_names, query, cos, logits, attr_dic, cos_threshold=0.6, logi
 
 
 def get_match_attr(query, attr_dic, all_logits):
+
     all_logits = [x.cpu().tolist() for x in all_logits]
     new_dic = {}
     for key in query:
@@ -67,12 +69,14 @@ def get_match_attr(query, attr_dic, all_logits):
             new_dic[key] = 0
     
     return new_dic
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Feature Compression Reconstruction')
     parser.add_argument('--cfg_file', type=str, default='config.yaml', help='Path of config files')
     args = parser.parse_args()
     yaml_path = args.cfg_file
-    os.environ["CUDA_VISIBLE_DEVICES"] = '2'
+    os.environ["CUDA_VISIBLE_DEVICES"] = '1'
     with open(yaml_path, 'r', encoding='utf-8') as f:
         config = yaml.load(f.read(), Loader=yaml.FullLoader)
     test_config = config['TEST']
@@ -129,9 +133,9 @@ if __name__ == '__main__':
             else:
                 for key in data['query']:
                     dic[key] = 0
-            if dic['图文'] == 0:
-                for key, val in attr_match_dic.items():
-                    dic[key] = val
+            
+            for key, val in attr_match_dic.items():
+                dic[key] = val
             
             ret = {
                 "img_name": data["img_name"],

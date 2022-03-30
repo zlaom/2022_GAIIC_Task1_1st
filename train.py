@@ -129,7 +129,7 @@ def train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn, d
         optimizer.zero_grad()
         if epoch==0:
             warmup_lr_schedule(optimizer, step, optim_cfg['WARMUP_STEPS'], optim_cfg['WARMUP_LR'], optim_cfg['LR'])
-        # alpha = alpha*min(1,(epoch*len(train_dataloader)+step)/(2*len(train_dataloader)))
+        # # alpha = alpha*min(1,(epoch*len(train_dataloader)+step)/(2*len(train_dataloader)))
 
         image, text = all_dic['feature'], all_dic['title']
         attr_label, attr_index = all_dic['attr_labels'].to(device).long(), all_dic['attr_index'].to(device)
@@ -195,7 +195,7 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
     num_train_optimization_steps = len(train_dataloader) * dataset_cfg['EPOCHS']
     
     optimizer = torch.optim.AdamW(params=model.parameters(), lr=optim_cfg['LR'], weight_decay=optim_cfg['WEIGHT_DECAY'])
-    
+    # optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, weight_decay=0.)
     loss_fn_1 = nn.CrossEntropyLoss().cuda()
     writer = SummaryWriter(log_dir=dataset_cfg['OUT_PATH'])
     logging.info('Dataset config = %s', str(dict(dataset_cfg)))
@@ -217,7 +217,7 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
                      train_loss, val_loss, match_acc, acc)
         
         torch.save(model.state_dict(),
-                os.path.join(output_folder, 'NEW_Train_epoch{:}_match_acc{:.4f}_all_acc{:.4f}_.pth'.format(epoch, match_acc, acc)))
+                os.path.join(output_folder, 'RATIO_Train_epoch{:}_match_acc{:.4f}_all_acc{:.4f}_.pth'.format(epoch, match_acc, acc)))
         
 
 
