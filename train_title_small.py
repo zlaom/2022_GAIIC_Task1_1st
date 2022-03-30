@@ -12,6 +12,12 @@ from model.bert import BertModel
 gpus = '3'
 batch_size = 128
 max_epoch = 100
+lr = 1e-5
+save_dir = 'output/title_match/title_small/'
+if not os.path.exists(save_dir):
+    os.makedirs(save_dir)
+save_name = 'lr1e-5'
+
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 # dataset
@@ -63,7 +69,7 @@ model = BertModel()
 model.cuda()
 
 # optimizer 
-optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5)
+optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
 # loss
 loss_fn = torch.nn.BCEWithLogitsLoss()
@@ -132,7 +138,7 @@ for epoch in range(max_epoch):
         max_acc = acc
         if last_path:
             os.remove(last_path)
-        save_path = 'output/title_match/base/'+'{:.4f}'.format(acc)+'.pth'
+        save_path = save_dir + save_name + '_{:.4f}'.format(acc) + '.pth'
         last_path = save_path
         torch.save(model.state_dict(), save_path)
         

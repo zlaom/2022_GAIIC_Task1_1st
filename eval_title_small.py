@@ -9,10 +9,12 @@ from tqdm import tqdm
 
 from model.bert import BertModel
 
-gpus = '2'
+gpus = '1'
 batch_size = 128
 max_epoch = 100
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
+
+ckpt_path = 'output/title_match/base/0.8613.pth'
 
 # dataset
 class TitleDataset(Dataset):
@@ -37,13 +39,12 @@ class TitleDataset(Dataset):
 
 # model
 model = BertModel()
-ckpt = torch.load('output/title_match/base/0.8287_old.pth')
+ckpt = torch.load(ckpt_path)
 model.load_state_dict(ckpt)
 model.cuda()
 
 # data
-# train_file = 'data/title_trial/coarse9000.txt,data/title_trial/coarse4500.txt'
-val_file = 'data/title_small/val/coarse1412.txt,data/title_small/val/coarse700_pos.txt'
+val_file = 'data/title_small/val/coarse1412.txt,data/title_small/val/fine700.txt'
 
 val_dataset = TitleDataset(val_file, is_train=False)
 val_dataloader = DataLoader(
@@ -62,11 +63,13 @@ total = 0
 for batch in tqdm(val_dataloader):
     images, titles, labels = batch 
     images = images.cuda()
-    logits = model(images, titles).squeeze().cpu()
-    # loss = loss_fn(logits.squeeze(), labels)
+    with torch.no_grad():
+        logits = model(images, titles).squeeze().cpu()
     logits = torch.sigmoid(logits)
-    logits[logits>0.5] = 1
-    logits[logits<=0.5] = 0
+    print(logits)
+    p = 0.5
+    logits[logits>p] = 1
+    logits[logits<=p] = 0
     correct += torch.sum(labels == logits)
     total += len(labels)
 acc = correct / total
