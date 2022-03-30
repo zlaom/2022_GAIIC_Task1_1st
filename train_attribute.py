@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 from model.bert import BertModel
 
-gpus = '2'
+gpus = '0'
 batch_size = 128
 max_epoch = 100
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus

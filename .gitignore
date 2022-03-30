@@ -2,3 +2,4 @@ baseline/
 output/
 data/pretrained_model/
 *.txt
+__pycache__
