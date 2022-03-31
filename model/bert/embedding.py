@@ -12,16 +12,16 @@ class BertEmbeddings(nn.Module):
         self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
-    def forward(self, input_ids=None, inputs_embeds=None):
-        if inputs_embeds is None:
-            inputs_embeds = self.word_embeddings(input_ids)
+    def forward(self, input_ids=None):
+        inputs_embeds = self.word_embeddings(input_ids)
         embeddings = inputs_embeds
 
         embeddings = self.LayerNorm(embeddings)
         embeddings = self.dropout(embeddings)
         return embeddings
-    
-    
+
+
+# huggingface embedding类的原型，上面是自己的简化版
 class BertPosEmbeddings(nn.Module):
     """Construct the embeddings from word, position and token_type embeddings."""
 

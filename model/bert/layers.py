@@ -246,11 +246,11 @@ class BertEncoder(nn.Module):
         self.layer = nn.ModuleList([BertLayer(config) for _ in range(
             config.num_hidden_layers)])
 
-    def forward(self, hidden_states, attention_mask=None):
-        extended_attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
-        extended_attention_mask = extended_attention_mask.to(
-            dtype=next(self.parameters()).dtype)  # fp16 compatibility
-        extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
+    def forward(self, hidden_states, extended_attention_mask=None):
+        # extended_attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
+        # extended_attention_mask = extended_attention_mask.to(
+        #     dtype=next(self.parameters()).dtype)  # fp16 compatibility
+        # extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
 
         all_hidden_states = ()
         all_attentions = ()
