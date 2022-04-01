@@ -43,7 +43,7 @@ python generate_dataset.py
 python train_attr_match.py
 ```
 
-图片训练+finetune
+图文训练+finetune
 ```
 python train_all_match.py
 python finetune.py
