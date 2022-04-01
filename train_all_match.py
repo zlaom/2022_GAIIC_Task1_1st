@@ -41,22 +41,29 @@ def set_seed_logger(dataset_cfg):
 
 def init_model(model_cfg, device):
     model = ITM_ATTR_Model(model_cfg)
-    model.load_state_dict(torch.load(model_cfg['CHECKPOINT_PATH']))
     model = model.to(device)
     return model
 
 
 def get_dataloader(dataset_cfg):
     
-    data_path = dataset_cfg['DATA_PATH']
-    data_list = []
-    with open(data_path, 'r', encoding='utf-8') as f:
+    train_path = dataset_cfg['TRAIN_PATH']
+    val_path = dataset_cfg['VAL_PATH']
+    train_list = []
+    val_list = []
+    with open(train_path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
         for line in lines:
             data = json.loads(line)
-            data_list.append(data)
-    l = int(len(data_list)*dataset_cfg['RATIO'])
-    train_list, val_list = data_list[:l], data_list[l:]
+            train_list.append(data)
+
+    with open(val_path, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+        for line in lines:
+            data = json.loads(line)
+            val_list.append(data)
+
+
     train_dataset = GaiicAttrDataset(train_list,)
     val_dataset = GaiicAttrDataset(val_list,)
 
@@ -96,7 +103,7 @@ def train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn, d
         
         train_loss_list.append(loss.item() * image.size(0))
         if (step + 1) % dataset_cfg['LOG_STEP'] == 0:
-            logging.info('  Epoch: %d/%s, Step: %d/%d, Train_Loss: %f, Train_all_match_Acc: %f ',
+            logging.info('  Epoch: %d/%s, Step: %d/%d, Train_Loss: %f, Train_attr_match_Acc: %f ',
                          epoch + 1, dataset_cfg['EPOCHS'], step + 1, len(train_dataloader),
                          loss.item(), correct/total)
 
@@ -129,15 +136,17 @@ def test_epoch(model, val_dataloader, loss_fn, device):
 
 def train(model_cfg, dataset_cfg, optim_cfg, device):
     set_seed_logger(dataset_cfg)
-    output_folder = os.path.join(dataset_cfg['OUT_PATH'], 'finetune')
+    output_folder = os.path.join(dataset_cfg['OUT_PATH'], 'train')
     os.makedirs(output_folder, exist_ok=True)
 
     model = init_model(model_cfg, device)
     train_dataloader, val_dataloader, train_num, val_num = get_dataloader(dataset_cfg)
     num_train_optimization_steps = len(train_dataloader) * dataset_cfg['EPOCHS']
     
-    optimizer = torch.optim.AdamW(params=model.parameters(), lr=1e-5)
+    optimizer = torch.optim.AdamW(params=model.parameters(), lr=1e-4)
 
+    # weight_decay=optim_cfg['WEIGHT_DECAY']
+    # optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, weight_decay=0.)
     loss_fn_1 = nn.CrossEntropyLoss().cuda()
     writer = SummaryWriter(log_dir=dataset_cfg['OUT_PATH'])
     logging.info('Dataset config = %s', str(dict(dataset_cfg)))
@@ -147,6 +156,7 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
     
 
     for epoch in range(dataset_cfg['EPOCHS']):
+        step_lr_schedule(optimizer, epoch, optim_cfg['LR'], optim_cfg['MIN_LR'], optim_cfg['WEIGHT_DECAY'])
         # test_epoch(model, val_dataloader, loss_fn_1, device)
         train_loss = train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn_1,  device)
         val_loss, acc = test_epoch(model, val_dataloader, loss_fn_1, device)
@@ -158,7 +168,7 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
                      train_loss, val_loss,  acc)
         
         torch.save(model.state_dict(),
-                os.path.join(output_folder, 'FINETUNE_MATCH_Train_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
+                os.path.join(output_folder, 'ALL_MATCH_Train_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
         
 
 
@@ -171,7 +181,7 @@ if __name__ == '__main__':
     with open(yaml_path, 'r', encoding='utf-8') as f:
         config = yaml.load(f.read(), Loader=yaml.FullLoader)
     model_cfg = config['MODEL']['ALL_MATCH']
-    dataset_cfg = config['FINETUNE']
+    dataset_cfg = config['ALL_TRAIN']
     optim_cfg = config['OPTIM']
     
     output_folder = dataset_cfg['OUT_PATH']

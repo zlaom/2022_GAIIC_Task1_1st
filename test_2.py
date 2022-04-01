@@ -10,7 +10,7 @@ import argparse
 import yaml
 
 import collections
-from models.gaiic_model import GaiicModel, BLIP_Model, ITM_Model
+from models.gaiic_model import BLIP_Model, ITM_ATTR_Model
 
 class TestDataset(torch.utils.data.Dataset):
     def __init__(self, data, attr_dic) -> None:
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     parser.add_argument('--cfg_file', type=str, default='config.yaml', help='Path of config files')
     args = parser.parse_args()
     yaml_path = args.cfg_file
-    os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+    os.environ["CUDA_VISIBLE_DEVICES"] = '3'
     with open(yaml_path, 'r', encoding='utf-8') as f:
         config = yaml.load(f.read(), Loader=yaml.FullLoader)
     test_config = config['TEST']
@@ -84,12 +84,19 @@ if __name__ == '__main__':
     attr_path = test_config['ATTR_PATH']
     output_path = test_config['OUT_PATH']
     os.makedirs(output_path.split('/')[0], exist_ok=True)
+   
+    # 属性匹配的model
+    attr_model_path = test_config['ATTR_CHECKPOINT_PATH']
+    attr_model = ITM_ATTR_Model(config['MODEL']['ATTR'])
+    attr_model.load_state_dict(torch.load(attr_model_path))
+    attr_model.cuda()
 
-    model_path = test_config['CHECKPOINT_PATH']
-    model = ITM_Model(config['MODEL'])
+    # 图文匹配的model
+    all_model_path = test_config['ALL_CHECKPOINT_PATH']
+    all_model = ITM_ATTR_Model(config['MODEL']['ALL_MATCH'])
+    all_model.load_state_dict(torch.load(all_model_path))
+    all_model.cuda()
 
-    model.load_state_dict(torch.load(model_path))
-    model.cuda()
     attr_dic = collections.defaultdict(int)
     i = 0
     with open(attr_path, 'r', encoding='utf-8') as f:
@@ -112,31 +119,34 @@ if __name__ == '__main__':
             data = json.loads(data)
             feature = np.array(data['feature']).astype(np.float32)
             texts = data['title']
+            new_query = [x for x in data['query'] if x != '图文']
+            attr_texts = [data['key_attr'][x] for x in new_query]
+            attr_features = torch.from_numpy(feature)[None, ].repeat(len(attr_texts), 1)
+            attr_features = attr_features.cuda()
             features = torch.from_numpy(feature)
-            new_query = []
-            for key in data['query']:
-                if key == '图文':
-                    continue
-                new_query.append(key)
             features = features.cuda()
             features = features.unsqueeze(0)
+
             with torch.no_grad():
-                output, attr_logits = model(features, texts)
-                output = output.cpu().tolist()
-            attr_match_dic = get_match_attr(new_query, attr_dic, attr_logits)
-            # print(attr_match_dic)
+                attr_logits = attr_model(attr_features, attr_texts)
+                all_logits = all_model(features, texts)
+                
+                attr_logits = attr_logits.cpu().tolist()
+                all_logits = all_logits.cpu().tolist()
+            
             dic = {}
-            if output[0][1] > output[0][0]:
-                for key in data['query']:
-                    dic[key] = 1
+
+            if all_logits[0][1] > all_logits[0][0]:
+                dic['图文'] = 1
                 count += 1
             else:
-                for key in data['query']:
+                dic['图文'] = 0
+            for key, value in zip(new_query, attr_logits):
+                if value[1] > value[0]:
+                    dic[key] = 1
+                else:
                     dic[key] = 0
-
-            curr = len(attr_match_dic.keys())
-            for key, val in attr_match_dic.items():
-                dic[key] = val
+            
             
             ret = {
                 "img_name": data["img_name"],

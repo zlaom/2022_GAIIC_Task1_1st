@@ -1,7 +1,7 @@
 # 说明
 
-此代码为JD图文匹配比赛的demo代码，基于[open_clip](https://github.com/mlfoundations/open_clip)和[Multilingual-CLIP](https://github.com/FreddeFrallan/Multilingual-CLIP)开发。
-
+2022世界人工智能大赛赛道一-电商图文匹配
+sustech小分队 baseline
 
 ## 训练
 首先安装open_clip（参考[README_openclip.md](README_openclip.md)），再安装其他依赖：
@@ -14,26 +14,39 @@ pip install transformers
 ```
 data
 ├── MacBert
+├── attr_match.json
 ├── attr_to_attrvals.json
-├── test.txt
+├── finetune_all_match.txt
+├── neg_coarse.txt
+├── pos_coarse_attr.txt
+├── preliminary_testA.txt
+├── test_attr_A.txt
+├── train_all_match.txt
 ├── train_coarse.txt
-├── pretrain_match.txt
-├── train_math.txt
-├── val_math.txt
 └── train_fine.txt
-└── neg_fine.txt
 ```
 分别为属性字典文件、测试文件、粗标数据、细标数据。
 
 
-生成5w的负例：
+生成60w+的属性正负例, 29w的图文正负例：
 ```
-analyze.ipynb
+process_data.ipynb
 ```
 
-训练
+生成test的属性值匹配：
 ```
-python train.py
+python generate_dataset.py
+```
+
+属性训练
+```
+python train_attr_match.py
+```
+
+图片训练+finetune
+```
+python train_all_match.py
+python finetune.py
 ```
 
 测试

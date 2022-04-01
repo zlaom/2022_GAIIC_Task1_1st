@@ -52,31 +52,30 @@ class GaiicModel(nn.Module):
         return cos
 
 
-class ITM_Model(nn.Module):
+class ITM_ATTR_Model(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         self.bert = MacBert(cfg['MAC_BERT'])
         text_dim, image_dim = cfg['TEXT_DIM'], cfg['IMAGE_DIM']
-        self.image_linear = nn.Linear(image_dim, 256)
-        self.bert_linear = nn.Linear(text_dim, 256)
-        self.dropout = nn.Dropout(0.1)
-        self.itm_head = nn.Linear(512, 2)
-        self.attr_head_list = nn.ModuleList()
-        for i in range(12):
-            self.attr_head_list.append(nn.Linear(512, 2))
+        self.image_linear = nn.Sequential(
+            nn.Linear(image_dim, image_dim),
+            nn.LayerNorm(image_dim)
+        )
+        self.itm_head = nn.Sequential(
+            nn.Linear(text_dim+image_dim, text_dim),
+            nn.LayerNorm(text_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(text_dim, 2)
+        )
+            
     def forward(self, image, text):
 
-        image = self.image_linear(image)
         text = self.bert(text)
-        text = self.bert_linear(text)
-        feature = torch.cat([image, text], dim=-1)
-        feature = self.dropout(feature)
-        logits_itm = self.itm_head(feature)
-        logits_attr_list = []
-        for i in range(12):
-            logits_attr_list.append(self.attr_head_list[i](feature))
+        image = self.image_linear(image)
+        features = torch.cat((image, text), dim=-1)
+        logits = self.itm_head(features)
 
-        return logits_itm, logits_attr_list
+        return logits
         
 
 class BLIP_Model(nn.Module):
