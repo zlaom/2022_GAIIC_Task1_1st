@@ -51,6 +51,6 @@ python finetune.py
 
 测试
 ```
-python test.py
+python test_2.py
 ```
 
