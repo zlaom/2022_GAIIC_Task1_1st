@@ -1,8 +1,6 @@
 import os
-import itertools
 import torch 
 import json
-import numpy as np 
 import random 
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm 
@@ -27,12 +25,14 @@ class TitleDataset(Dataset):
         self.is_train = is_train
         self.items = []
         for file in input_filename.split(','):
+            print(f'read: {file}')
             with open(file, 'r') as f:
                 for line in tqdm(f):
                     item = json.loads(line)
                     if self.is_train:
                         if item['match']['图文']: # 训练集图文必须匹配
-                            self.items.append(item)
+                            if item['key_attr']: # 必须有属性
+                                self.items.append(item)
                     else:
                         self.items.append(item)
                 
@@ -43,6 +43,7 @@ class TitleDataset(Dataset):
         item = self.items[idx]
         image = torch.tensor(item['feature'])
         if self.is_train:
+            # print(list(item['key_attr'].keys()))
             query = random.sample(list(item['key_attr'].keys()), 1)[0]
             attr = item['key_attr'][query]
             label = item['match'][query]
@@ -59,8 +60,10 @@ class TitleDataset(Dataset):
 
 # data
 train_file = '../data/preprocessed_data/unit_train_fine45000.txt,../data/preprocessed_data/unit_coarse_fine89588.txt'
+# train_file = '../data/preprocessed_data/unit_train_fine5000.txt'
 # train_file = 'data/original_data/sample/train_fine_sample.txt'
 val_file = '../data/preprocessed_data/unit_attribute_val_fine.txt'
+# val_file = '../data/preprocessed_data/unit_train_fine5000.txt'
 train_dataset = TitleDataset(train_file, unit_neg_sample_dict, is_train=True)
 train_dataloader = DataLoader(
         train_dataset,
@@ -145,9 +148,6 @@ for epoch in range(max_epoch):
         
         loss.backward()
         optimizer.step()
-    
-    acc = evaluate(model, val_dataloader)
-    print(acc)
 
     acc = evaluate(model, val_dataloader)
     print(f'epoch:{epoch} val acc:{acc}')
