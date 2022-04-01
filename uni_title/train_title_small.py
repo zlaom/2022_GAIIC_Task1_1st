@@ -9,10 +9,10 @@ from tqdm import tqdm
 
 from model.bert import BertModel
 
-gpus = '3'
+gpus = '0'
 batch_size = 128
 max_epoch = 200
-save_root = 'output/title_match/uni_title_drop0.5/'
+save_root = 'output/title_match/uni_title_small1/'
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 
@@ -32,11 +32,8 @@ class TitleDataset(Dataset):
             with open(file, 'r') as f:
                 for line in tqdm(f):
                     item = json.loads(line)
-                    if self.is_train:
-                        if item['match']['图文']: # 训练集图文必须匹配
-                            self.items.append(item)
-                    else:
-                        self.items.append(item)
+                    self.items.append(item)
+
                 
     def __len__(self):
         return len(self.items)
@@ -60,11 +57,11 @@ class TitleDataset(Dataset):
             
 
 # data
-train_file ='../data/preprocessed_data/unit_train_fine45000.txt,../data/preprocessed_data/unit_coarse_fine89588.txt'
+train_file ='../data/preprocessed_data/unit_train_fine45000.txt,../data/preprocessed_data/unit_neg_coarse_fine6412.txt,../data/preprocessed_data/unit_coarse_fine89588.txt'
 # train_file ='../data/preprocessed_data/unit_train_fine.txt.00'
 # train_file ='../data/preprocessed_data/unit_train_fine.txt.01'
 # train_file = 'data/original_data/sample/train_fine_sample.txt'
-val_file = '../data/preprocessed_data/unit_train_fine5000.txt,../data/preprocessed_data/unit_neg_coarse_fine10412.txt'
+val_file = '../data/preprocessed_data/unit_train_fine5000.txt,../data/preprocessed_data/unit_neg_coarse_fine4000.txt'
 # val_file = '../data/preprocessed_data/unit_train_fine.txt.01'
 train_dataset = TitleDataset(train_file, unit_neg_sample_dict, is_train=True)
 train_dataloader = DataLoader(
@@ -138,7 +135,7 @@ for epoch in range(max_epoch):
             train_acc = correct / total
             correct = 0
             total = 0
-            print('Epoch:[{}|{}], Acc:{:.2f}%, Progress:{:.2f}'.format(epoch, max_epoch, train_acc*100, i/len(train_dataloader)*100))
+            print('Epoch:[{}|{}], Acc:{:.2f}%, Progress:{:.2}'.format(epoch, max_epoch, train_acc*100, i/len(train_dataloader)*100))
         proba = torch.sigmoid(logits.cpu())
         proba[proba>0.5] = 1
         proba[proba<=0.5] = 0

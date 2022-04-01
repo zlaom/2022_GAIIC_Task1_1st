@@ -15,6 +15,8 @@ class BertModel(nn.Module):
             nn.Linear(2048, 2048),
             nn.LayerNorm(2048)
         )
+        self.text_drop = nn.Dropout(0.5)
+        self.image_drop = nn.Dropout(0.5)
         self.classifier = nn.Sequential(
             nn.Linear(bert_dim+2048, bert_dim),
             nn.LayerNorm(bert_dim),
@@ -38,6 +40,6 @@ class BertModel(nn.Module):
 
         title_features = bert_hidden[:,0,:]
         
-        features = torch.cat([image_features, title_features], dim=1)
+        features = torch.cat([self.image_drop(image_features), self.text_drop(title_features)], dim=1)
         x = self.classifier(features)
         return x
