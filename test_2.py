@@ -10,7 +10,7 @@ import argparse
 import yaml
 
 import collections
-from models.gaiic_model import BLIP_Model, ITM_ATTR_Model
+from models.gaiic_model import BLIP_Model, ITM_ATTR_Model, ITM_ALL_Model
 
 class TestDataset(torch.utils.data.Dataset):
     def __init__(self, data, attr_dic) -> None:
@@ -90,13 +90,14 @@ if __name__ == '__main__':
     attr_model = ITM_ATTR_Model(config['MODEL']['ATTR'])
     attr_model.load_state_dict(torch.load(attr_model_path))
     attr_model.cuda()
+    attr_model.eval()
 
     # 图文匹配的model
     all_model_path = test_config['ALL_CHECKPOINT_PATH']
-    all_model = ITM_ATTR_Model(config['MODEL']['ALL_MATCH'])
+    all_model = ITM_ALL_Model(config['MODEL']['ALL_MATCH'])
     all_model.load_state_dict(torch.load(all_model_path))
     all_model.cuda()
-
+    all_model.eval()
     attr_dic = collections.defaultdict(int)
     i = 0
     with open(attr_path, 'r', encoding='utf-8') as f:
@@ -141,12 +142,13 @@ if __name__ == '__main__':
                 count += 1
             else:
                 dic['图文'] = 0
+            
             for key, value in zip(new_query, attr_logits):
                 if value[1] > value[0]:
                     dic[key] = 1
                 else:
                     dic[key] = 0
-            
+
             
             ret = {
                 "img_name": data["img_name"],

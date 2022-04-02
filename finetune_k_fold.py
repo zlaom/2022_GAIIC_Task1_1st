@@ -18,7 +18,7 @@ from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.tensorboard import SummaryWriter
 from utils.utils import warmup_lr_schedule, step_lr_schedule
 from data_pre.dataset import GaiicAttrDataset
-from models.gaiic_model import BLIP_Model, ITM_ATTR_Model, ITM_ALL_Model
+from models.gaiic_model import BLIP_Model, ITM_ATTR_Model
 import tqdm
 
         
@@ -40,13 +40,13 @@ def set_seed_logger(dataset_cfg):
 
 
 def init_model(model_cfg, device):
-    model = ITM_ALL_Model(model_cfg)
+    model = ITM_ATTR_Model(model_cfg)
     model.load_state_dict(torch.load(model_cfg['CHECKPOINT_PATH']))
     model = model.to(device)
     return model
 
 
-def get_dataloader(dataset_cfg):
+def get_dataloader(dataset_cfg, i, k_fold):
     
     data_path = dataset_cfg['DATA_PATH']
     data_list = []
@@ -55,8 +55,17 @@ def get_dataloader(dataset_cfg):
         for line in lines:
             data = json.loads(line)
             data_list.append(data)
-    l = int(len(data_list)*dataset_cfg['RATIO'])
-    train_list, val_list = data_list[:l], data_list[l:]
+
+    fold_len = len(data_list) // k_fold
+    if i == 0:
+        train_list, val_list = data_list[fold_len:], data_list[:fold_len]
+    elif i < k_fold - 1:
+        train_list = data_list[:fold_len*i] + data_list[fold_len*(i+1):]
+        val_list = data_list[fold_len*i:fold_len*(i+1)]
+    else:
+        train_list = data_list[:fold_len*i]
+        val_list = data_list[fold_len*i:]
+    
     train_dataset = GaiicAttrDataset(train_list,)
     val_dataset = GaiicAttrDataset(val_list,)
 
@@ -127,13 +136,13 @@ def test_epoch(model, val_dataloader, loss_fn, device):
     return np.mean(val_loss_list), correct.item() / total
 
 
-def train(model_cfg, dataset_cfg, optim_cfg, device):
+def train(model_cfg, dataset_cfg, device, per_k, k_fold):
     set_seed_logger(dataset_cfg)
     output_folder = os.path.join(dataset_cfg['OUT_PATH'], 'finetune')
     os.makedirs(output_folder, exist_ok=True)
 
     model = init_model(model_cfg, device)
-    train_dataloader, val_dataloader, train_num, val_num = get_dataloader(dataset_cfg)
+    train_dataloader, val_dataloader, train_num, val_num = get_dataloader(dataset_cfg, per_k, k_fold)
     num_train_optimization_steps = len(train_dataloader) * dataset_cfg['EPOCHS']
     
     optimizer = torch.optim.AdamW(params=model.parameters(), lr=1e-5)
@@ -153,12 +162,12 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
         writer.add_scalar(f'CE/train', train_loss, epoch)
         writer.add_scalar(f'ACC/val', acc, epoch)
         
-        logging.info(' Train Epoch %d/%s Finished | Train Loss: %f | Val loss: %f | Val acc: %f',
-                     epoch + 1, dataset_cfg['EPOCHS'], 
+        logging.info('SPLIT_%d Train Epoch %d/%s Finished | Train Loss: %f | Val loss: %f | Val acc: %f',
+                     per_k+1, epoch + 1, dataset_cfg['EPOCHS'], 
                      train_loss, val_loss,  acc)
         
         torch.save(model.state_dict(),
-                os.path.join(output_folder, 'SE_FINETUNE_MATCH_Train_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
+                os.path.join(output_folder, 'SPLIT_{:}_FINETUNE_MATCH_Train_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(per_k+1,epoch, val_loss, acc)))
         
 
 
@@ -173,10 +182,11 @@ if __name__ == '__main__':
     model_cfg = config['MODEL']['ALL_MATCH']
     dataset_cfg = config['FINETUNE']
     optim_cfg = config['OPTIM']
-    
+    k_fold = dataset_cfg['K_FOLD']
     output_folder = dataset_cfg['OUT_PATH']
     os.makedirs(output_folder, exist_ok=True)
     os.system('cp {} {}/config.yaml'.format(yaml_path, output_folder))
     
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    train(model_cfg, dataset_cfg, optim_cfg, device)
+    for per_k in range(k_fold):
+        train(model_cfg, dataset_cfg, device, per_k, k_fold)
