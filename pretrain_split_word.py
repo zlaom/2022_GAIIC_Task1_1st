@@ -6,10 +6,12 @@ import numpy as np
 import random 
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm 
+import copy
 
-from model.bert import BertModel
+from model.split_bert.bertconfig import BertConfig
+from model.pretrain_splitbert import PretrainSplitBert
 
-gpus = '1'
+gpus = '0'
 batch_size = 128
 max_epoch = 100
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
@@ -42,22 +44,23 @@ class SplitDataset(Dataset):
     def __getitem__(self, idx):
         image = torch.tensor(self.items[idx]['feature'])
         split = self.items[idx]['vocab_split']
-        if self.is_train:
-            for i, word in enumerate(split):
-                if random.random() > 0.5: # 替换
-                    new_word = np.random.choice(self.words_list, p=self.proba_list)
-                    split[i] = new_word
-                    if new_word != word: # 存在new_word和word相同的情况
-                        label = 0
-                else:
-                    label = 1
-            return image, split, label
+        split = copy.deepcopy(split) # 要做拷贝，否则会改变self.items的值
+        
+        split_label = torch.ones(20)
+        for i, word in enumerate(split):
+            if random.random() > 0.5: # 替换
+                new_word = np.random.choice(self.words_list, p=self.proba_list)
+                split[i] = new_word
+                if new_word != word: # 存在new_word和word相同的情况
+                    split_label[i] = 0
+
+        return image, split, split_label
 
             
 
 # data
-# train_file = 'data/split_word/fine45000.txt,data/split_word/coarse89588.txt'
-train_file = 'data/split_word/fine500_sample.txt'
+train_file = 'data/split_word/fine45000.txt,data/split_word/coarse89588.txt'
+# train_file = 'data/split_word/fine500_sample.txt'
 word_dict_file = 'utils/data_process/base_word_dict/processed_word_dict.json'
 
 with open(word_dict_file, 'r') as f:
@@ -67,12 +70,12 @@ def collate_fn(batch):
     tensors = []
     splits = []
     labels = []
-    for feature, split, label in batch:
+    for feature, split, split_label in batch:
         tensors.append(feature)
         splits.append(split)
-        labels.append(labels)
+        labels.append(split_label)
     tensors = torch.stack(tensors)
-    labels = torch.tensor(labels)
+    labels = torch.stack(labels)
     return tensors, splits, labels
 
 train_dataset = SplitDataset(train_file, word_dict)
@@ -87,7 +90,9 @@ train_dataloader = DataLoader(
     )
 
 # model
-model = BertModel()
+config = BertConfig()
+vocab_file = 'model/split_bert/vocab.txt'
+model = PretrainSplitBert(config, vocab_file)
 model.cuda()
 
 # optimizer 
@@ -110,13 +115,21 @@ for epoch in range(max_epoch):
         optimizer.zero_grad()
         
         images, splits, labels = batch 
+        
         images = images.cuda()
-        labels = labels.float().cuda()
         
-        logits = model(images, splits).squeeze()
+        logits, mask = model(images, splits)
+        logits = logits.squeeze(2)
         
+        _, W = logits.shape
+        labels = labels[:, :W].float().cuda()
+        
+        mask = mask.to(torch.bool)
+        logits = logits[mask]
+        labels = labels[mask]
+
         # train acc
-        if (i+1)%1 == 0:
+        if (i+1)%200 == 0:
             train_acc = correct / total
             correct = 0
             total = 0

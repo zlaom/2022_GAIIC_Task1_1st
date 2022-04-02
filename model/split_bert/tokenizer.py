@@ -5,7 +5,7 @@ class Tokenizer():
     def __init__(self, vocab_file):
         self.vocab = self.load_vocab(vocab_file)
 
-    def load_vocab(vocab_file):
+    def load_vocab(self, vocab_file):
         """Loads a vocabulary file into a dictionary."""
         vocab = collections.OrderedDict()
         with open(vocab_file, "r", encoding="utf-8") as reader:
@@ -16,6 +16,7 @@ class Tokenizer():
         return vocab
 
     def __call__(self, splits):
+        tokens = {}
         # 动态pad，提取最大长度
         split_length = []
         for split in splits:
@@ -31,6 +32,9 @@ class Tokenizer():
             for j, word in enumerate(split):
                 input_ids[i, j] = self.vocab[word]
                 mask[i, j] = 1
-
-        return input_ids, mask
+                
+        tokens['input_ids'] = input_ids
+        tokens['attention_mask'] = mask
+        
+        return tokens
     
