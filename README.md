@@ -30,17 +30,17 @@ data
 
 生成60w+的属性正负例, 29w的图文正负例：
 ```
-process_data.ipynb
+python generate_train_dataest.py
 ```
 
 生成test的属性值匹配：
 ```
-python generate_dataset.py
+python generate_test_dataset.py
 ```
 
 属性训练
 ```
-python train_attr_match.py
+python train_attr_match_mlp.py
 ```
 
 图文训练+finetune
@@ -51,6 +51,6 @@ python finetune.py
 
 测试
 ```
-python test_2.py
+python test_mlp.py
 ```
 

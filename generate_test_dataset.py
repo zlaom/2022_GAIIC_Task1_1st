@@ -14,6 +14,7 @@ with open('./data/preliminary_testA.txt', 'r', encoding='utf-8') as f:
         data = json.loads(data)
         # print(data)
         title = data['title']
+        title = ''.join([ch for ch in title if (not ch.isdigit()) and (ch != '年')])
         data['title'] = title
         data['key_attr'] = {}
         for query in data['query']:
@@ -22,6 +23,16 @@ with open('./data/preliminary_testA.txt', 'r', encoding='utf-8') as f:
             for values in attr_dict[query]:
                 flag = False
                 for val in values:
+                    if query == '衣长' and '中长款' in title:
+                        data['key_attr'][query] = '中长款'
+                        flag = True
+                        break
+
+                    if query == '裙长' and '中长裙' in title:
+                        data['key_attr'][query] = '中长裙'
+                        flag = True
+                        break
+
                     if val in title:
                         data['key_attr'][query] = val
                         flag = True

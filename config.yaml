@@ -25,7 +25,7 @@ MODEL:
     NUM_ATTR: 12
 
 OPTIMIZER:
-  LEARNING_RATE: 0.0002
+  LEARNING_RATE: 0.0001
   COEF_LR: 5.0
   WEIGHT_DECAY: 0.00001
   WARMUP_PROPORTION: 0.1
@@ -60,11 +60,11 @@ ATTR_TRAIN:
   ATTR_PATH: ./data/attr_to_attrvals.json
   OUT_PATH: checkpoints/
   EPOCHS: 40
-  RATIO: 0.95
+  RATIO: 0.9
   SHUFFLE: FALSE
   SEED: 43
-  TRAIN_BATCH: 1536
-  VAL_BATCH: 768
+  TRAIN_BATCH: 3072
+  VAL_BATCH: 1536
   NUM_WORKERS: 4
   LOG_STEP: 40
 
@@ -87,6 +87,6 @@ ALL_TRAIN:
 TEST:
   DATA_PATH: ./data/test_attr_A.txt
   ATTR_PATH: ./data/attr_to_attrvals.json
-  OUT_PATH: result/SE_all_0.928_attr_0.932.txt
-  ATTR_CHECKPOINT_PATH: checkpoints/train/ATTR_Train_epoch14_val_loss0.1704_val_acc0.9322_.pth
+  OUT_PATH: result/MLP_SE_all_0.928_attr_0.933.txt
+  ATTR_CHECKPOINT_PATH: checkpoints/train/NEW_MLP_SE_ATTR_Train_epoch5_val_loss0.1688_val_acc0.9331_.pth
   ALL_CHECKPOINT_PATH: checkpoints/finetune/SE_FINETUNE_MATCH_Train_epoch5_val_loss0.1748_val_acc0.9280_.pth
