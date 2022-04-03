@@ -1,20 +1,22 @@
-import os
-import itertools
+import os 
+import itertools 
 import torch 
-import json
+import json 
 import numpy as np 
 import random 
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader 
 from tqdm import tqdm 
-import copy
+import copy 
 
-from model.split_bert.bertconfig import BertConfig
-from model.pretrain_splitbert import PretrainSplitBert
+from model.split_bert.bertconfig import BertConfig 
+from model.pretrain_splitbert import PretrainSplitBert 
 
-gpus = '2'
+gpus = '3'
 batch_size = 128
-max_epoch = 100
+max_epoch = 300
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
+
+num_hidden_layers = 6
 
 save_dir = 'output/pretrain/base/'
 if not os.path.exists(save_dir):
@@ -107,7 +109,7 @@ val_dataloader = DataLoader(
     )
 
 # model
-config = BertConfig()
+config = BertConfig(num_hidden_layers=num_hidden_layers)
 model = PretrainSplitBert(config, vocab_file)
 model.cuda()
 

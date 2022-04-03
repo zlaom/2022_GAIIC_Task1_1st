@@ -83,8 +83,8 @@ with open(coarse_file, 'r') as f:
                 word_dict[word] = 1
 
 # 保存词表
-with open(word_dict_save_file, 'w') as f:
-    json.dump(word_dict, f, ensure_ascii=False)
+# with open(word_dict_save_file, 'w') as f:
+#     json.dump(word_dict, f, ensure_ascii=False)
     
 # 保存数据
 print(len(fine_rets))
