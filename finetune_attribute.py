@@ -11,12 +11,12 @@ import copy
 from model.split_bert.bertconfig import BertConfig
 from model.pretrain_splitbert import PretrainSplitBert
 
-gpus = '2'
+gpus = '3'
 batch_size = 128
 max_epoch = 100
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
-save_dir = 'output/pretrain/base/'
+save_dir = 'output/title_match/pretrain/base/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''

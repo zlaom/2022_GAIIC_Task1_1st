@@ -6,11 +6,11 @@ ltp_path = '../../data/pretrained_model/ltp_base'
 
 attr_dict_file = '../../data/equal_processed_data/attr_to_attrvals.json'
 
-fine_file = '../../data/equal_processed_data/fine45000.txt'
-coarse_file = '../../data/equal_processed_data/coarse89588.txt'
+fine_file = '../../data/equal_processed_data/fine5000.txt'
+coarse_file = '../../data/equal_processed_data/coarse10412.txt'
 
-fine_save_file = '../../data/split_word/fine45000.txt'
-coarse_save_file = '../../data/split_word/coarse89588.txt'
+fine_save_file = '../../data/split_word/fine5000.txt'
+coarse_save_file = '../../data/split_word/coarse10412.txt'
 
 word_dict_save_file = '../vocab/word_dict.json'
 
