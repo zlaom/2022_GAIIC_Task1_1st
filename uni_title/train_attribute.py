@@ -10,10 +10,11 @@ from model.bert import BertModel
 gpus = '3'
 batch_size = 128
 max_epoch = 200
-save_root = 'output/attr_match/uni_attr_drop0.5/'
+save_root = 'output/attr_match/uni_key_attr_drop0.5/'
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
-# 用来生成负样本的字典
+os.makedirs(save_root, exist_ok=True)
+
 # 用来生成负样本的字典
 with open('../data/preprocessed_data/unit_neg_sample_dict.json', 'r', encoding='utf-8') as f:
     unit_neg_sample_dict = json.load(f)
@@ -50,12 +51,12 @@ class TitleDataset(Dataset):
             if random.random() > 0.5:
                 attr =  random.sample(self.neg_sample_dict[f'{query}-{attr}'], 1)[0]
                 label = 0
-            return image, attr, label
+            return image, f'{query}是{attr}', label
         else:
             query = list(item['key_attr'].keys())[0]
             attr = item['key_attr'][query]
             label = item['match'][query]
-            return image, attr, label
+            return image, f'{query}是{attr}', label
             
 
 # data
