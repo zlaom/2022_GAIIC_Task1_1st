@@ -11,19 +11,22 @@ import copy
 from model.split_bert.bertconfig import BertConfig
 from model.pretrain_splitbert import PretrainSplitBert
 
-gpus = '4'
+gpus = '2'
 batch_size = 128
 max_epoch = 100
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
-save_dir = 'output/attr_finetune/base/'
+num_hidden_layers = 12
+
+save_dir = 'output/attr_finetune/base_12l_pretrain0.8785/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
 
-ckpt_file = 'output/pretrain/base/0.8771.pth'
+ckpt_file = 'output/pretrain/base_12l/0.8785.pth'
 
-train_file = 'data/equal_split_word/fine45000.txt,data/equal_split_word/coarse89588.txt'
+# train_file = 'data/equal_split_word/fine45000.txt,data/equal_split_word/coarse89588.txt'
+train_file = 'data/equal_split_word/fine45000.txt'
 val_file = 'data/equal_split_word/fine5000.txt'
 # train_file = 'data/equal_split_word/fine45000.txt'
 # vocab_dict_file = 'dataset/vocab/vocab_dict.json'
@@ -119,9 +122,9 @@ val_dataloader = DataLoader(
     )
 
 # model
-config = BertConfig()
+config = BertConfig(num_hidden_layers=num_hidden_layers)
 model = PretrainSplitBert(config, vocab_file)
-# model.load_state_dict(torch.load(ckpt_file))
+model.load_state_dict(torch.load(ckpt_file))
 model.cuda()
 
 # optimizer 

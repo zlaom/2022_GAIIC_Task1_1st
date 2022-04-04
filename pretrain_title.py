@@ -27,17 +27,30 @@ save_name = ''
 LOAD_CKPT = False
 ckpt_file = 'output/pretrain/base_12l/0.8785.pth'
 
-train_file = 'data/equal_split_word/title/fine9000.txt,data/equal_split_word/title/coarse9000.txt'
-val_file = 'data/equal_split_word/title/fine700.txt,data/equal_split_word/title/coarse1412.txt'
+train_file = 'data/equal_split_word/title/fine40000.txt,data/equal_split_word/coarse89588.txt'
+# train_file = 'data/equal_split_word/title/fine40000.txt'
+# val_file = 'data/equal_split_word/title/fine700.txt,data/equal_split_word/title/coarse1412.txt'
+val_file = 'data/equal_split_word/title/fine9000.txt'
 # train_file = 'data/equal_split_word/fine45000.txt'
-# vocab_dict_file = 'dataset/vocab/vocab_dict.json'
+vocab_dict_file = 'dataset/vocab/vocab_dict.json'
 vocab_file = 'dataset/vocab/vocab.txt'
 attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
 
 
 # dataset 自监督预训练任务，没有验证集
 class SplitDataset(Dataset):
-    def __init__(self, input_filename):
+    def __init__(self, input_filename, vocab_dict, is_train):
+        self.is_train = is_train
+        # 取出所有可替换的词及出现的次数比例
+        words_list = []
+        proba_list = []
+        for word, n in vocab_dict.items():
+            words_list.append(word)
+            proba_list.append(n)
+        self.words_list = words_list 
+        proba_list = np.array(proba_list)
+        self.proba_list = proba_list / np.sum(proba_list)
+        
         # 提取数据
         self.items = []
         for file in input_filename.split(','):
@@ -48,19 +61,34 @@ class SplitDataset(Dataset):
                 
     def __len__(self):
         return len(self.items)
-
         
     def __getitem__(self, idx):
         item = self.items[idx]
         image = torch.tensor(item['feature'])
         split = item['vocab_split']
-        label = item['match']['图文']
+        if self.is_train:
+            split = copy.deepcopy(split) # 要做拷贝，否则会改变self.items的值
+            label = 1
+            if random.random() > 0.5: # 负例，挑选一定比例的word替换
+                num_rep = int(len(split)/6) + 1
+                rep_idx = random.sample([i for i in range(len(split))], num_rep)
+                for i in rep_idx:
+                    new_word = np.random.choice(self.words_list, p=self.proba_list)
+                    word = split[i]
+                    split[i] = new_word
+                    if new_word != word: # 任意存在new_word和word不相同就改变label
+                        label = 0
+        else:
+            label = item['match']['图文']
 
         return image, split, label
 
             
 
 # data
+with open(vocab_dict_file, 'r') as f:
+    vocab_dict = json.load(f)
+    
 def collate_fn(batch):
     tensors = []
     splits = []
@@ -76,7 +104,7 @@ def collate_fn(batch):
 
     return tensors, splits, labels
 
-train_dataset = SplitDataset(train_file)
+train_dataset = SplitDataset(train_file, vocab_dict, is_train=True)
 train_dataloader = DataLoader(
         train_dataset,
         batch_size=batch_size,
@@ -86,7 +114,7 @@ train_dataloader = DataLoader(
         drop_last=True,
         collate_fn=collate_fn,
     )
-val_dataset = SplitDataset(val_file)
+val_dataset = SplitDataset(val_file, vocab_dict, is_train=True)
 val_dataloader = DataLoader(
         val_dataset,
         batch_size=batch_size,
@@ -153,7 +181,7 @@ for epoch in range(max_epoch):
         logits = logits.squeeze(1)
 
         # train acc
-        if (i+1)%20 == 0:
+        if (i+1)%200 == 0:
             train_acc = correct / total
             correct = 0
             total = 0

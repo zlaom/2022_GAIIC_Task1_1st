@@ -35,7 +35,7 @@ class BertConfig():
         self.hidden_dropout_prob = hidden_dropout_prob
         self.attention_probs_dropout_prob = attention_probs_dropout_prob
         # self.max_position_embeddings = max_position_embeddings
-        self.type_vocab_size = type_vocab_size
+        # self.type_vocab_size = type_vocab_size
         self.initializer_range = initializer_range
         self.pad_token_id = pad_token_id
         self.layer_norm_eps = layer_norm_eps
