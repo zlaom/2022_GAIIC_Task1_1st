@@ -11,73 +11,90 @@ import copy
 from model.split_bert.bertconfig import BertConfig
 from model.fusemodel import FuseModel
 
-gpus = '2'
+gpus = '4'
 batch_size = 128
-max_epoch = 100
+max_epoch = 300
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 split_layers = 2
 fuse_layers = 4
 n_img_expand = 2
 
-save_dir = 'output/title_finetune/base/'
+save_dir = 'output/title_pretrain/word_match/2l4l2expand/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
 
-LOAD_CKPT = True
-ckpt_file = 'output/title_pretrain/2l_4l_imgexpand2/0.4773.pth'
 
-train_file = 'data/equal_split_word/title/fine9000.txt,data/equal_split_word/title/coarse9000.txt'
-val_file = 'data/equal_split_word/title/fine700.txt,data/equal_split_word/title/coarse1412.txt'
+train_file = 'data/equal_split_word/title/fine40000.txt,data/equal_split_word/coarse89588.txt'
+# train_file = 'data/equal_split_word/title/fine40000.txt'
+# val_file = 'data/equal_split_word/title/fine700.txt,data/equal_split_word/title/coarse1412.txt'
+val_file = 'data/equal_split_word/title/fine9000.txt'
 # train_file = 'data/equal_split_word/fine45000.txt'
-# vocab_dict_file = 'dataset/vocab/vocab_dict.json'
+vocab_dict_file = 'dataset/vocab/vocab_dict.json'
 vocab_file = 'dataset/vocab/vocab.txt'
 attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
 
 
 # dataset 自监督预训练任务，没有验证集
 class SplitDataset(Dataset):
-    def __init__(self, input_filename):
+    def __init__(self, input_filename, vocab_dict):
+        # 取出所有可替换的词及出现的次数比例
+        words_list = []
+        proba_list = []
+        for word, n in vocab_dict.items():
+            words_list.append(word)
+            proba_list.append(n)
+        self.words_list = words_list 
+        proba_list = np.array(proba_list)
+        self.proba_list = proba_list / np.sum(proba_list)
+
         # 提取数据
         self.items = []
         for file in input_filename.split(','):
             with open(file, 'r') as f:
                 for line in tqdm(f):
                     item = json.loads(line)
-                    self.items.append(item)
+                    if item['match']['图文']: # 训练集图文必须匹配
+                        self.items.append(item)
                 
     def __len__(self):
         return len(self.items)
-
-        
+    
     def __getitem__(self, idx):
-        item = self.items[idx]
-        image = torch.tensor(item['feature'])
-        split = item['vocab_split']
-        label = item['match']['图文']
+        image = torch.tensor(self.items[idx]['feature'])
+        split = self.items[idx]['vocab_split']
+        split = copy.deepcopy(split) # 要做拷贝，否则会改变self.items的值
+        
+        split_label = torch.ones(20)
+        for i, word in enumerate(split):
+            if random.random() > 0.5: # 替换
+                new_word = np.random.choice(self.words_list, p=self.proba_list)
+                split[i] = new_word
+                if new_word != word: # 存在new_word和word相同的情况
+                    split_label[i] = 0
 
-        return image, split, label
+        return image, split, split_label
 
             
 
 # data
+with open(vocab_dict_file, 'r') as f:
+    vocab_dict = json.load(f)
+    
 def collate_fn(batch):
     tensors = []
     splits = []
     labels = []
-
-    for feature, split, label in batch:
+    for feature, split, split_label in batch:
         tensors.append(feature)
         splits.append(split)
-        labels.append(label)
-
+        labels.append(split_label)
     tensors = torch.stack(tensors)
-    labels = torch.tensor(labels)
-
+    labels = torch.stack(labels)
     return tensors, splits, labels
 
-train_dataset = SplitDataset(train_file)
+train_dataset = SplitDataset(train_file, vocab_dict)
 train_dataloader = DataLoader(
         train_dataset,
         batch_size=batch_size,
@@ -87,7 +104,7 @@ train_dataloader = DataLoader(
         drop_last=True,
         collate_fn=collate_fn,
     )
-val_dataset = SplitDataset(val_file)
+val_dataset = SplitDataset(val_file, vocab_dict)
 val_dataloader = DataLoader(
         val_dataset,
         batch_size=batch_size,
@@ -102,8 +119,6 @@ val_dataloader = DataLoader(
 split_config = BertConfig(num_hidden_layers=split_layers)
 fuse_config = BertConfig(num_hidden_layers=fuse_layers)
 model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
-if LOAD_CKPT:
-    model.load_state_dict(torch.load(ckpt_file))
 model.cuda()
 
 # optimizer 
@@ -121,8 +136,14 @@ def evaluate(model, val_dataloader):
     for batch in tqdm(val_dataloader):
         images, splits, labels = batch 
         images = images.cuda()
-        logits = model(images, splits)
-        logits = logits.squeeze(1).cpu()
+        logits, mask = model(images, splits, word_match=True)
+        logits = logits.squeeze(2).cpu()
+        
+        _, W = logits.shape
+        labels = labels[:, :W].float()
+        mask = mask.to(torch.bool)
+        logits = logits[mask]
+        labels = labels[mask]
         
         logits = torch.sigmoid(logits)
         logits[logits>0.5] = 1
@@ -148,13 +169,19 @@ for epoch in range(max_epoch):
         images, splits, labels = batch 
         
         images = images.cuda()
-        labels = labels.float().cuda()
         
-        logits = model(images, splits)
-        logits = logits.squeeze(1)
+        logits, mask = model(images, splits, word_match=True)
+        logits = logits.squeeze(2)
+        
+        _, W = logits.shape
+        labels = labels[:, :W].float().cuda()
+        
+        mask = mask.to(torch.bool)
+        logits = logits[mask]
+        labels = labels[mask]
 
         # train acc
-        if (i+1)%80 == 0:
+        if (i+1)%200 == 0:
             train_acc = correct / total
             correct = 0
             total = 0
@@ -174,10 +201,10 @@ for epoch in range(max_epoch):
     acc = evaluate(model, val_dataloader)
     print(acc)
 
-    # if acc > max_acc:
-    #     max_acc = acc
-    #     if last_path:
-    #         os.remove(last_path)
-    #     save_path = save_dir + save_name + '{:.4f}'.format(acc)+'.pth'
-    #     last_path = save_path
-    #     torch.save(model.state_dict(), save_path)
+    if acc > max_acc:
+        max_acc = acc
+        if last_path:
+            os.remove(last_path)
+        save_path = save_dir + save_name + '{:.4f}'.format(acc)+'.pth'
+        last_path = save_path
+        torch.save(model.state_dict(), save_path)

@@ -11,34 +11,39 @@ import copy
 from model.split_bert.bertconfig import BertConfig
 from model.fusemodel import FuseModel
 
-gpus = '2'
+gpus = '5'
 batch_size = 128
-max_epoch = 100
+max_epoch = 300
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 split_layers = 2
 fuse_layers = 4
 n_img_expand = 2
 
-save_dir = 'output/title_finetune/base/'
+save_dir = 'output/title_pretrain/keyattrmatch/2l4lexpand2/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
 
-LOAD_CKPT = True
-ckpt_file = 'output/title_pretrain/2l_4l_imgexpand2/0.4773.pth'
 
-train_file = 'data/equal_split_word/title/fine9000.txt,data/equal_split_word/title/coarse9000.txt'
+train_file = 'data/equal_split_word/title/fine40000.txt,data/equal_split_word/coarse89588.txt'
+# train_file = 'data/equal_split_word/title/fine40000.txt'
 val_file = 'data/equal_split_word/title/fine700.txt,data/equal_split_word/title/coarse1412.txt'
+# val_file = 'data/equal_split_word/title/fine9000.txt'
 # train_file = 'data/equal_split_word/fine45000.txt'
-# vocab_dict_file = 'dataset/vocab/vocab_dict.json'
+vocab_dict_file = 'dataset/vocab/vocab_dict.json'
 vocab_file = 'dataset/vocab/vocab.txt'
 attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
 
 
 # dataset 自监督预训练任务，没有验证集
 class SplitDataset(Dataset):
-    def __init__(self, input_filename):
+    def __init__(self, input_filename, attr_dict_file, is_train):
+        self.is_train = is_train
+        with open(attr_dict_file, 'r') as f:
+            attr_dict = json.load(f)
+        self.negative_dict = self.get_negative_dict(attr_dict)
+        
         # 提取数据
         self.items = []
         for file in input_filename.split(','):
@@ -49,19 +54,43 @@ class SplitDataset(Dataset):
                 
     def __len__(self):
         return len(self.items)
-
-        
+    
+    def get_negative_dict(self, attr_dict):
+        negative_dict = {}
+        for query, attr_list in attr_dict.items():
+            negative_dict[query] = {}
+            for attr in attr_list:
+                l = attr_list.copy()
+                l.remove(attr)
+                negative_dict[query][attr] = l
+        return negative_dict
+    
     def __getitem__(self, idx):
         item = self.items[idx]
         image = torch.tensor(item['feature'])
         split = item['vocab_split']
-        label = item['match']['图文']
+        if self.is_train:
+            split = copy.deepcopy(split) # 要做拷贝，否则会改变self.items的值
+            key_attr = item['key_attr']
+            label = 1
+            if key_attr: # 属性存在才可能进行替换
+                for query, attr in key_attr.items():
+                    if random.random() > 0.5:
+                        new_attr = random.sample(self.negative_dict[query][attr], 1)[0]
+                        attr_index = split.index(attr) # 先找到属性的位置
+                        split[attr_index] = new_attr
+                        label = 0 # 任意一个属性负替换则标签为0
+        else:
+            label = item['match']['图文']
 
         return image, split, label
 
             
 
 # data
+with open(vocab_dict_file, 'r') as f:
+    vocab_dict = json.load(f)
+    
 def collate_fn(batch):
     tensors = []
     splits = []
@@ -77,7 +106,7 @@ def collate_fn(batch):
 
     return tensors, splits, labels
 
-train_dataset = SplitDataset(train_file)
+train_dataset = SplitDataset(train_file, attr_dict_file, is_train=True)
 train_dataloader = DataLoader(
         train_dataset,
         batch_size=batch_size,
@@ -87,7 +116,7 @@ train_dataloader = DataLoader(
         drop_last=True,
         collate_fn=collate_fn,
     )
-val_dataset = SplitDataset(val_file)
+val_dataset = SplitDataset(val_file, attr_dict_file, is_train=False)
 val_dataloader = DataLoader(
         val_dataset,
         batch_size=batch_size,
@@ -102,8 +131,6 @@ val_dataloader = DataLoader(
 split_config = BertConfig(num_hidden_layers=split_layers)
 fuse_config = BertConfig(num_hidden_layers=fuse_layers)
 model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
-if LOAD_CKPT:
-    model.load_state_dict(torch.load(ckpt_file))
 model.cuda()
 
 # optimizer 
@@ -154,7 +181,7 @@ for epoch in range(max_epoch):
         logits = logits.squeeze(1)
 
         # train acc
-        if (i+1)%80 == 0:
+        if (i+1)%200 == 0:
             train_acc = correct / total
             correct = 0
             total = 0
@@ -174,10 +201,10 @@ for epoch in range(max_epoch):
     acc = evaluate(model, val_dataloader)
     print(acc)
 
-    # if acc > max_acc:
-    #     max_acc = acc
-    #     if last_path:
-    #         os.remove(last_path)
-    #     save_path = save_dir + save_name + '{:.4f}'.format(acc)+'.pth'
-    #     last_path = save_path
-    #     torch.save(model.state_dict(), save_path)
+    if acc > max_acc:
+        max_acc = acc
+        if last_path:
+            os.remove(last_path)
+        save_path = save_dir + save_name + '{:.4f}'.format(acc)+'.pth'
+        last_path = save_path
+        torch.save(model.state_dict(), save_path)

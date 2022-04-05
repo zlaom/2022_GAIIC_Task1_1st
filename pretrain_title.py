@@ -13,24 +13,23 @@ from model.fusemodel import FuseModel
 
 gpus = '3'
 batch_size = 128
-max_epoch = 100
+max_epoch = 300
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
-split_layers = 6
-fuse_layers = 6
+split_layers = 2
+fuse_layers = 4
+n_img_expand = 2
 
-save_dir = 'output/title_finetune/base/'
+save_dir = 'output/title_pretrain/2l_4l_imgexpand2/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
 
-LOAD_CKPT = False
-ckpt_file = 'output/pretrain/base_12l/0.8785.pth'
 
 train_file = 'data/equal_split_word/title/fine40000.txt,data/equal_split_word/coarse89588.txt'
 # train_file = 'data/equal_split_word/title/fine40000.txt'
-# val_file = 'data/equal_split_word/title/fine700.txt,data/equal_split_word/title/coarse1412.txt'
-val_file = 'data/equal_split_word/title/fine9000.txt'
+val_file = 'data/equal_split_word/title/fine700.txt,data/equal_split_word/title/coarse1412.txt'
+# val_file = 'data/equal_split_word/title/fine9000.txt'
 # train_file = 'data/equal_split_word/fine45000.txt'
 vocab_dict_file = 'dataset/vocab/vocab_dict.json'
 vocab_file = 'dataset/vocab/vocab.txt'
@@ -114,7 +113,7 @@ train_dataloader = DataLoader(
         drop_last=True,
         collate_fn=collate_fn,
     )
-val_dataset = SplitDataset(val_file, vocab_dict, is_train=True)
+val_dataset = SplitDataset(val_file, vocab_dict, is_train=False)
 val_dataloader = DataLoader(
         val_dataset,
         batch_size=batch_size,
@@ -128,9 +127,7 @@ val_dataloader = DataLoader(
 # model
 split_config = BertConfig(num_hidden_layers=split_layers)
 fuse_config = BertConfig(num_hidden_layers=fuse_layers)
-model = FuseModel(split_config, fuse_config, vocab_file)
-if LOAD_CKPT:
-    model.load_state_dict(torch.load(ckpt_file))
+model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
 model.cuda()
 
 # optimizer 
@@ -201,10 +198,10 @@ for epoch in range(max_epoch):
     acc = evaluate(model, val_dataloader)
     print(acc)
 
-    # if acc > max_acc:
-    #     max_acc = acc
-    #     if last_path:
-    #         os.remove(last_path)
-    #     save_path = save_dir + save_name + '{:.4f}'.format(acc)+'.pth'
-    #     last_path = save_path
-    #     torch.save(model.state_dict(), save_path)
+    if acc > max_acc:
+        max_acc = acc
+        if last_path:
+            os.remove(last_path)
+        save_path = save_dir + save_name + '{:.4f}'.format(acc)+'.pth'
+        last_path = save_path
+        torch.save(model.state_dict(), save_path)

@@ -25,7 +25,7 @@ class FuseModel(nn.Module):
            
         
 
-    def forward(self, image_features, splits): # 注意splits需要为二维列表
+    def forward(self, image_features, splits, word_match=False): # 注意splits需要为二维列表
         B = image_features.shape[0]
         image_features = self.image_encoder(image_features)
         image_features = image_features.reshape(B, self.n_img_expand, -1)
@@ -53,6 +53,9 @@ class FuseModel(nn.Module):
                                     token_type_ids=fuse_token_type_ids)[0]
         
         # 输出头
-        x = self.head(fuse_output[:,0,:])
+        if word_match:
+            x = self.head(fuse_output)[:,self.n_img_expand+1:,:]
+            return x, attention_mask
         
+        x = self.head(fuse_output[:,0,:])
         return x
