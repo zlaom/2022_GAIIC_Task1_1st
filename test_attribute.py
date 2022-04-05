@@ -1,5 +1,3 @@
-from cgitb import text
-import re
 import os
 import itertools
 import torch 
@@ -9,38 +7,28 @@ import random
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm 
 
-from model.bert import BertModel
+from model.bert.bertconfig import BertConfig
+from model.splitmodel import PretrainSplitBert
 
-gpus = '1'
-batch_size = 128
+
+gpus = '4'
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
-attr_dict_file = 'data/original_data/attr_to_attrvals.json'
-test_file = 'data/original_data/preliminary_testA.txt'
-ckpt_path = 'output/attr_match/base/0.9329.pth'
-out_file = "test_pred.txt"
+num_hidden_layers = 6
+vocab_file = 'dataset/vocab/vocab.txt'
 
-def load_attr_dict(file):
-    # 读取属性字典
-    with open(file, 'r') as f:
-        attr_dict = {}
-        for attr, attrval_list in json.load(f).items():
-            attrval_list = list(map(lambda x: x.split('='), attrval_list))
-            attr_dict[attr] = list(itertools.chain.from_iterable(attrval_list))
-    return attr_dict
+attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
+test_file = 'data/equal_split_word/test4000.txt'
+ckpt_path = 'output/attr_finetune/base_pretrain0.8771/0.9424.pth'
+out_file = "pred_attr.txt"
 
-def match_attrval(title, attr, attr_dict):
-    # 在title中匹配属性值
-    attrvals = "|".join(attr_dict[attr])
-    ret = re.findall(attrvals, title)
-    return "{}{}".format(attr, ''.join(ret))
-
-attr_dict = load_attr_dict(attr_dict_file)
-
+with open(attr_dict_file, 'r') as f:
+    attr_dict = json.load(f)
+    
 # model
-ckpt = torch.load(ckpt_path)
-model = BertModel()
-model.load_state_dict(ckpt)
+config = BertConfig(num_hidden_layers=num_hidden_layers)
+model = PretrainSplitBert(config, vocab_file)
+model.load_state_dict(torch.load(ckpt_path))
 model.cuda()
 
 
@@ -51,25 +39,50 @@ with open(test_file, 'r') as f:
     for i, data in enumerate(tqdm(f)):
         data = json.loads(data)
         image = data['feature']
-        image = torch.tensor(image)[None, ]
-        image = image.cuda()
-        texts = [data['title'] if query=='图文' else match_attrval(data['title'], query, attr_dict) for query in data['query']]
-        title = [texts[0]]
+        image = torch.tensor(image)
+        split = data['vocab_split']
+        
+        key_attr = data['key_attr']
+        attr_mask = torch.zeros(20)
+        query_seq = {} # 整理query对应最后logits的顺序
+        for query, attr in key_attr.items():
+            if attr not in split:
+                print(data['title'])
+                print(data['vocab_split'])
+                print(data['key_attr'])
+                break
+            attr_index = split.index(attr) # 先找到属性的位置
+            attr_mask[attr_index] = 1
+            query_seq[query] = attr_index
+            
+        attr_mask = attr_mask[None, ]
+        split = [split]
+        image = image[None, ].cuda()
+        
 
-        # with torch.no_grad():
-        #     logits = model(image, title).squeeze().cpu()
-        if len(texts) > 1:
-            attrs = texts[1:]
-            images_for_attr = image.repeat(len(texts) - 1, 1)
-            with torch.no_grad():
-                attr_logits = model(images_for_attr, attrs).squeeze(1).cpu()
-                attr_logits = torch.sigmoid(attr_logits).tolist()
-        else:
-            attr_logits = []
-        title_logit = [1]
-        logits = title_logit + attr_logits
+        with torch.no_grad():
+            logits, mask = model(image, split)
+            logits = logits.squeeze(2).cpu()
+            
+            _, W = logits.shape
+            attr_mask = attr_mask[:, :W]
+            
+            mask = mask.to(torch.bool)
+            attr_mask = attr_mask.to(torch.bool)
+            attr_mask = attr_mask[mask]
+            logits = logits[mask]
+
+            logits = torch.sigmoid(logits)
+            logits[logits>0.5] = 1
+            logits[logits<=0.5] = 0
+            
+        match = {}
+        match['图文'] = 1
+        for query, index in query_seq.items():
+            match[query] = int(logits[index])
+        
         ret = {"img_name": data["img_name"],
-            "match": {query: int(1 if logit>0.5 else 0) for query, logit in zip(data['query'], logits)}
+            "match": match
         }
         rets.append(json.dumps(ret, ensure_ascii=False)+'\n')
 
