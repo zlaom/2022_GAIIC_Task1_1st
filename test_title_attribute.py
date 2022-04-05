@@ -30,12 +30,6 @@ def load_attr_dict(file):
             attr_dict[attr] = list(itertools.chain.from_iterable(attrval_list))
     return attr_dict
 
-def match_attrval(title, attr, attr_dict):
-    # 在title中匹配属性值
-    attrvals = "|".join(attr_dict[attr])
-    ret = re.findall(attrvals, title)
-    return "{}{}".format(attr, ''.join(ret))
-
 attr_dict = load_attr_dict(attr_dict_file)
 
 # attribute model

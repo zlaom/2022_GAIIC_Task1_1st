@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 from model.bert.embedding import BertEmbeddings
 from model.bert.layers import BertEncoder
-from typing import List, Optional, Tuple, Union
 
 class SplitBertModel(nn.Module):
     def __init__(self, config):
@@ -15,10 +14,13 @@ class SplitBertModel(nn.Module):
         # 初始化用的是HERO方法的，huggingface的太复杂看不懂
         self.apply(self.init_weights)
 
-    def forward(self, input_ids: Optional[torch.Tensor] = None, attention_mask: Optional[torch.Tensor] = None):
+    def forward(self, input_ids=None, attention_mask=None, input_embeds=None):
         extended_attention_mask = self.get_extended_attention_mask(attention_mask)
         # bert
-        embedding_output = self.embeddings(input_ids=input_ids)
+        if input_embeds is not None:
+            embedding_output = input_embeds
+        else:
+            embedding_output = self.embeddings(input_ids=input_ids)
         encoder_outputs = self.encoder(embedding_output, extended_attention_mask=extended_attention_mask)
 
         return encoder_outputs
