@@ -8,8 +8,8 @@ from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm 
 import copy 
 
-from model.split_bert.bertconfig import BertConfig 
-from model.pretrain_splitbert import PretrainSplitBert 
+from model.bert.bertconfig import BertConfig 
+from model.splitmodel import PretrainSplitBert 
 
 gpus = '3'
 batch_size = 128

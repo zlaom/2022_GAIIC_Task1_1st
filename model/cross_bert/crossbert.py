@@ -1,27 +1,23 @@
 import torch 
 import torch.nn as nn
-from model.split_bert.embedding import FuseBertEmbeddings
-from model.split_bert.layers import BertEncoder
-from typing import List, Optional, Tuple, Union
+from model.cross_bert.crosslayers import CrossBertEncoder
 
-class FuseBertModel(nn.Module):
+class CrossBert(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
-
-        self.embeddings = FuseBertEmbeddings(config) 
-        self.encoder = BertEncoder(config)
+        self.encoder = CrossBertEncoder(config)
         
         # 初始化用的是HERO方法的，huggingface的太复杂看不懂
         self.apply(self.init_weights)
 
-    def forward(self, inputs_embeds, attention_mask=None, token_type_ids=None):
-        extended_attention_mask = self.get_extended_attention_mask(attention_mask)
-        # bert
-        embedding_output = self.embeddings(inputs_embeds=inputs_embeds, token_type_ids=token_type_ids)
-        encoder_outputs = self.encoder(embedding_output, extended_attention_mask=extended_attention_mask)
+    def forward(self, inputs_embeds1, inputs_embeds2, attention_mask1=None, attention_mask2=None):
+        extended_attention_mask1 = self.get_extended_attention_mask(attention_mask1)
+        extended_attention_mask2 = self.get_extended_attention_mask(attention_mask2)
+        # crossbert
+        encoder_outputs1, encoder_outputs2 = self.encoder(inputs_embeds1, inputs_embeds2, extended_attention_mask1, extended_attention_mask2)
 
-        return encoder_outputs
+        return encoder_outputs1, encoder_outputs2
     
     # 注意只在transformer后面用init_weights，不要包含其他模块
     def init_weights(self, module): 
@@ -32,7 +28,7 @@ class FuseBertModel(nn.Module):
             module.weight.data.fill_(1.0)
         if isinstance(module, nn.Linear) and module.bias is not None:
             module.bias.data.zero_()
-            
+    
     @property
     def dtype(self):
         return next(self.parameters()).dtype

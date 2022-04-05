@@ -1,18 +1,18 @@
 import torch
 import torch.nn as nn
 from model.split_bert.splitbert import SplitBertModel
-from model.fuse_bert.fusebert import FuseBertModel
+from model.cross_bert.crossbert import CrossBert
 from model.bert.tokenizer import Tokenizer
 
 from einops import rearrange, repeat
 
-class FuseModel(nn.Module):
+class CrossModel(nn.Module):
     def __init__(self, split_config, fuse_config, vocab_file, img_dim=2048, n_img_expand=8):
         super().__init__()
         self.n_img_expand = n_img_expand
         
         self.splitbert = SplitBertModel(split_config)
-        self.fusebert = FuseBertModel(fuse_config)
+        self.fusebert = CrossBert(fuse_config)
         self.tokenizer = Tokenizer(vocab_file)
         self.cls_token = nn.Parameter(torch.randn(1, 1, fuse_config.hidden_size))
         

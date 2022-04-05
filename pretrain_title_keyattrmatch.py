@@ -8,7 +8,7 @@ from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm 
 import copy
 
-from model.split_bert.bertconfig import BertConfig
+from model.bert.bertconfig import BertConfig
 from model.fusemodel import FuseModel
 
 gpus = '5'

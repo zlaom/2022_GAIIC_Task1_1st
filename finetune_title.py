@@ -8,10 +8,10 @@ from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm 
 import copy
 
-from model.split_bert.bertconfig import BertConfig
+from model.bert.bertconfig import BertConfig
 from model.fusemodel import FuseModel
 
-gpus = '2'
+gpus = '3'
 batch_size = 128
 max_epoch = 100
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
@@ -26,7 +26,7 @@ if not os.path.exists(save_dir):
 save_name = ''
 
 LOAD_CKPT = True
-ckpt_file = 'output/title_pretrain/2l_4l_imgexpand2/0.4773.pth'
+ckpt_file = 'output/title_pretrain/2l_4l_imgexpand2/0.6207.pth'
 
 train_file = 'data/equal_split_word/title/fine9000.txt,data/equal_split_word/title/coarse9000.txt'
 val_file = 'data/equal_split_word/title/fine700.txt,data/equal_split_word/title/coarse1412.txt'
@@ -174,10 +174,10 @@ for epoch in range(max_epoch):
     acc = evaluate(model, val_dataloader)
     print(acc)
 
-    # if acc > max_acc:
-    #     max_acc = acc
-    #     if last_path:
-    #         os.remove(last_path)
-    #     save_path = save_dir + save_name + '{:.4f}'.format(acc)+'.pth'
-    #     last_path = save_path
-    #     torch.save(model.state_dict(), save_path)
+    if acc > max_acc:
+        max_acc = acc
+        if last_path:
+            os.remove(last_path)
+        save_path = save_dir + save_name + '{:.4f}'.format(acc)+'.pth'
+        last_path = save_path
+        torch.save(model.state_dict(), save_path)

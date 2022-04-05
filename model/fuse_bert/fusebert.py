@@ -1,24 +1,24 @@
 import torch 
 import torch.nn as nn
-from model.bert.embedding import BertEmbeddings
+from model.fuse_bert.fuseembedding import FuseBertEmbeddings
 from model.bert.layers import BertEncoder
 from typing import List, Optional, Tuple, Union
 
-class SplitBertModel(nn.Module):
+class FuseBertModel(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
 
-        self.embeddings = BertEmbeddings(config) 
+        self.embeddings = FuseBertEmbeddings(config) 
         self.encoder = BertEncoder(config)
         
         # 初始化用的是HERO方法的，huggingface的太复杂看不懂
         self.apply(self.init_weights)
 
-    def forward(self, input_ids: Optional[torch.Tensor] = None, attention_mask: Optional[torch.Tensor] = None):
+    def forward(self, inputs_embeds, attention_mask=None, token_type_ids=None):
         extended_attention_mask = self.get_extended_attention_mask(attention_mask)
         # bert
-        embedding_output = self.embeddings(input_ids=input_ids)
+        embedding_output = self.embeddings(inputs_embeds=inputs_embeds, token_type_ids=token_type_ids)
         encoder_outputs = self.encoder(embedding_output, extended_attention_mask=extended_attention_mask)
 
         return encoder_outputs

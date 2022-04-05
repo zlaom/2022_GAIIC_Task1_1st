@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from model.split_bert.splitbert import SplitBertModel
-from model.split_bert.tokenizer import Tokenizer
+from model.bert.tokenizer import Tokenizer
 
 class PretrainSplitBert(nn.Module):
     def __init__(self, config, vocab_file):
