@@ -1,4 +1,3 @@
-from msilib import sequence
 import torch
 import torch.nn as nn
 from model.split_bert.splitbert import SplitBertModel
@@ -40,19 +39,19 @@ class PretrainCrossModel(nn.Module):
         # 构建cross输入
         image_attention_mask = torch.ones(B, self.n_img_expand, dtype=int).cuda()
         # cross bert
-        image_outputs, split_outputs = self.fusebert(image_embeds, split_embeds, 
+        image_outputs, split_outputs = self.crossbert(image_embeds, split_embeds, 
                                                      image_attention_mask, split_attention_mask)
         image_embeds =  image_outputs[0]
         split_embeds = split_outputs[0]
 
         # 输出头
-        x = self.word_head(split_embeds)[:,self.n_img_expand:,:]
+        x = self.word_head(split_embeds)
         return x, split_attention_mask
 
     
     
 class FinetuneCrossModel(nn.Module):
-    def __init__(self, split_config, cross_config, cls_split_config, vocab_file, img_dim=2048, n_img_expand=8):
+    def __init__(self, split_config, cross_config, cls_config, vocab_file, img_dim=2048, n_img_expand=8):
         super().__init__()
         self.n_img_expand = n_img_expand
         
@@ -67,9 +66,9 @@ class FinetuneCrossModel(nn.Module):
         )
         
         # cls_token和分类头以及第二个splitbert是finetune才用到的
-        self.cls_splitbert = SplitBertModel(cls_split_config)
-        self.cls_token = nn.Parameter(torch.randn(1, 1, cls_split_config.hidden_size))
-        self.cls_head = nn.Linear(cls_split_config.hidden_size, 1)
+        self.cls_splitbert = SplitBertModel(cls_config)
+        self.cls_token = nn.Parameter(torch.randn(1, 1, cls_config.hidden_size))
+        self.cls_head = nn.Linear(cls_config.hidden_size, 1)
            
         
 
@@ -88,7 +87,7 @@ class FinetuneCrossModel(nn.Module):
         # 构建cross输入
         image_attention_mask = torch.ones(B, self.n_img_expand, dtype=int).cuda()
         # cross bert
-        image_outputs, split_outputs = self.fusebert(image_embeds, split_embeds, 
+        image_outputs, split_outputs = self.crossbert(image_embeds, split_embeds, 
                                                      image_attention_mask, split_attention_mask)
         image_embeds =  image_outputs[0]
         split_embeds = split_outputs[0]
@@ -96,10 +95,10 @@ class FinetuneCrossModel(nn.Module):
         # 构建cls输入
         cls_tokens = repeat(self.cls_token, '1 N D -> B N D', B = B).cuda()
         cls_embeds = torch.cat([cls_tokens, split_embeds], dim=1)
-        cls_attention_mask = torch.cat([torch.ones(B, 1, dtype=int), split_attention_mask], dim=1)
+        cls_attention_mask = torch.cat([torch.ones(B, 1, dtype=int).cuda(), split_attention_mask], dim=1)
         # cls split bert
         cls_embeds = self.cls_splitbert(input_embeds=cls_embeds, 
-                                        attention_mask=cls_attention_mask).cuda()
+                                        attention_mask=cls_attention_mask)[0]
         
         # 输出头
         x = self.cls_head(cls_embeds[:,0,:])

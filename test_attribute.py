@@ -9,25 +9,40 @@ from tqdm import tqdm
 
 from model.bert.bertconfig import BertConfig
 from model.splitmodel import PretrainSplitBert
-
+from model.crossmodel import PretrainCrossModel
 
 gpus = '4'
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
-num_hidden_layers = 6
 vocab_file = 'dataset/vocab/vocab.txt'
-
-attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
 test_file = 'data/equal_split_word/test4000.txt'
-ckpt_path = 'output/attr_finetune/base_pretrain0.8771/0.9424.pth'
+attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
 out_file = "pred_attr.txt"
 
 with open(attr_dict_file, 'r') as f:
     attr_dict = json.load(f)
-    
-# model
-config = BertConfig(num_hidden_layers=num_hidden_layers)
-model = PretrainSplitBert(config, vocab_file)
+
+
+# fuse model
+# num_hidden_layers = 6
+# ckpt_path = 'output/attr_finetune/base_pretrain0.8771/0.9424.pth'
+
+# config = BertConfig(num_hidden_layers=num_hidden_layers)
+# model = PretrainSplitBert(config, vocab_file)
+# model.load_state_dict(torch.load(ckpt_path))
+# model.cuda()
+
+
+# cross model
+split_layers = 5
+cross_layers = 1
+n_img_expand = 2
+
+ckpt_path = 'output/cross_finetune/attr/fusematch/5l1l2exp/0.9424.pth'
+
+split_config = BertConfig(num_hidden_layers=split_layers)
+cross_config = BertConfig(num_hidden_layers=cross_layers)
+model = PretrainCrossModel(split_config, cross_config, vocab_file, n_img_expand=n_img_expand)
 model.load_state_dict(torch.load(ckpt_path))
 model.cuda()
 
