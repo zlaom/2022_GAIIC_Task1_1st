@@ -11,13 +11,13 @@ import argparse
 import numpy as np
 import scipy.io as scio
 import random
-os.environ["CUDA_VISIBLE_DEVICES"] = '3'
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.tensorboard import SummaryWriter
 from utils.utils import warmup_lr_schedule, step_lr_schedule
-from data_pre.dataset import GaiicAttrDataset
+from data_pre.dataset import GaiicAttrDataset, GaiicMatchDataset
 from models.gaiic_model import BLIP_Model, ITM_ATTR_Model, ITM_ALL_Model
 import tqdm
 
@@ -47,25 +47,27 @@ def init_model(model_cfg, device):
 
 def get_dataloader(dataset_cfg):
     
-    train_path = dataset_cfg['TRAIN_PATH']
-    val_path = dataset_cfg['VAL_PATH']
-    train_list = []
-    val_list = []
+    train_path = dataset_cfg['DATA_PATH_1']
+    val_path = dataset_cfg['DATA_PATH_2']
+    data_list = []
     with open(train_path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
         for line in lines:
             data = json.loads(line)
-            train_list.append(data)
+            data_list.append(data)
 
     with open(val_path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
         for line in lines:
             data = json.loads(line)
-            val_list.append(data)
+            data_list.append(data)
+    np.random.shuffle(data_list)
+    train_list = data_list[:-2000]
+    val_list = data_list[-2000:]
+     
 
-
-    train_dataset = GaiicAttrDataset(train_list,)
-    val_dataset = GaiicAttrDataset(val_list,)
+    train_dataset = GaiicMatchDataset(train_list, dataset_cfg['ATTR_PATH'])
+    val_dataset = GaiicMatchDataset(val_list, dataset_cfg['ATTR_PATH'])
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=dataset_cfg['TRAIN_BATCH'], shuffle=True,
@@ -143,7 +145,7 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
     train_dataloader, val_dataloader, train_num, val_num = get_dataloader(dataset_cfg)
     num_train_optimization_steps = len(train_dataloader) * dataset_cfg['EPOCHS']
     
-    optimizer = torch.optim.AdamW(params=model.parameters(), lr=1e-4)
+    optimizer = torch.optim.AdamW(params=model.parameters(), lr=5e-5)
 
     # weight_decay=optim_cfg['WEIGHT_DECAY']
     # optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, weight_decay=0.)
@@ -168,7 +170,7 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
                      train_loss, val_loss,  acc)
         
         torch.save(model.state_dict(),
-                os.path.join(output_folder, 'PRETRAIN_SE_ALL_MATCH_Train_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
+                os.path.join(output_folder, 'rm_add_change_PRETRAIN_0.5_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
         
 
 

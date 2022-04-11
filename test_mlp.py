@@ -19,7 +19,7 @@ if __name__ == '__main__':
     parser.add_argument('--cfg_file', type=str, default='config.yaml', help='Path of config files')
     args = parser.parse_args()
     yaml_path = args.cfg_file
-    os.environ["CUDA_VISIBLE_DEVICES"] = '3'
+    os.environ["CUDA_VISIBLE_DEVICES"] = '1'
     with open(yaml_path, 'r', encoding='utf-8') as f:
         config = yaml.load(f.read(), Loader=yaml.FullLoader)
     test_config = config['TEST']

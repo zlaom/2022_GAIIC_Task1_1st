@@ -12,7 +12,7 @@ MODEL:
     IMAGE_DIM: 2048
     NUM_ATTR: 12
   ALL_MATCH:
-    CHECKPOINT_PATH: checkpoints/train/SE_ALL_MATCH_Train_epoch9_val_loss0.8684_val_acc0.7814_.pth
+    CHECKPOINT_PATH: checkpoints/train/PRETRAIN_0.5_epoch49_val_loss0.2365_val_acc0.9055_.pth
     MAC_BERT:
       NAME: MAC_BERT
       MODEL_PATH: data/MacBert
@@ -32,20 +32,20 @@ OPTIMIZER:
   ETA_MIN: 0.00005
 
 OPTIM:
-  LR: 0.0003
+  LR: 0.0001
   MIN_LR: 0.00001
-  WEIGHT_DECAY: 0.005
+  WEIGHT_DECAY: 0.
   WARMUP_STEPS: 3000
   WARMUP_LR: 0.00001
   LR_DECAY_RATE: 0.9
 
 
 FINETUNE:
-  DATA_PATH: ./data/finetune_all_match.txt
+  DATA_PATH: ./data/finetune_all_match_0.3.txt
   ATTR_PATH: ./data/attr_to_attrvals.json
   OUT_PATH: checkpoints/
-  EPOCHS: 20
-  RATIO: 0.9
+  EPOCHS: 40
+  RATIO: 0.8
   SHUFFLE: FALSE
   SEED: 2022
   TRAIN_BATCH: 512
@@ -57,27 +57,27 @@ FINETUNE:
 
 ATTR_TRAIN:
   DATA_PATH: ./data/all_attr_match.txt
-  ATTR_PATH: ./data/attr_to_attrvals.json
+  ATTR_PATH: ./data/attr_dic.json
   OUT_PATH: checkpoints/
   EPOCHS: 40
-  RATIO: 0.9
+  RATIO: 0.96
   SHUFFLE: FALSE
-  SEED: 43
+  SEED: 2021
   TRAIN_BATCH: 3072
   VAL_BATCH: 1536
   NUM_WORKERS: 4
   LOG_STEP: 40
 
 ALL_TRAIN:
-  TRAIN_PATH: ./data/train_all_match.txt
-  VAL_PATH: ./data/finetune_all_match.txt
-  ATTR_PATH: ./data/attr_to_attrvals.json
+  DATA_PATH_1: ./data/new_pos_coarse.txt
+  DATA_PATH_2: ./data/new_fine.txt
+  ATTR_PATH: ./data/attr_match_78.json
   OUT_PATH: checkpoints/
-  EPOCHS: 40
+  EPOCHS: 100
   RATIO: 0.95
   SHUFFLE: FALSE
-  SEED: 43
-  TRAIN_BATCH: 512
+  SEED: 2020
+  TRAIN_BATCH: 768
   VAL_BATCH: 512
   NUM_WORKERS: 4
   LOG_STEP: 40
@@ -87,6 +87,6 @@ ALL_TRAIN:
 TEST:
   DATA_PATH: ./data/test_attr_A.txt
   ATTR_PATH: ./data/attr_to_attrvals.json
-  OUT_PATH: result/MLP_SE_all_0.928_attr_0.933.txt
-  ATTR_CHECKPOINT_PATH: checkpoints/train/NEW_MLP_SE_ATTR_Train_epoch5_val_loss0.1688_val_acc0.9331_.pth
-  ALL_CHECKPOINT_PATH: checkpoints/finetune/SE_FINETUNE_MATCH_Train_epoch5_val_loss0.1748_val_acc0.9280_.pth
+  OUT_PATH: result/NORM_MLP_SE_all_0.9445_attr_0.9339.txt
+  ATTR_CHECKPOINT_PATH: checkpoints/train/NORM_SE_ATTR_Train_epoch9_val_loss0.1702_val_acc0.9339_.pth
+  ALL_CHECKPOINT_PATH: checkpoints/finetune/COS_0.5_FINETUNE_MATCH_Train_epoch9_val_loss0.1495_val_acc0.9445_.pth

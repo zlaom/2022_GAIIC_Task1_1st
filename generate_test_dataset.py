@@ -7,6 +7,9 @@ from tqdm import tqdm
 with open('./data/attr_match.json', 'r', encoding='utf-8') as f:
     attr_dict = json.load(f)
 
+with open('./data/attr_dic_all_1.json', 'r', encoding='utf-8') as f:
+    attr_all_dict = json.load(f)
+
 test_data_list = []
 
 with open('./data/preliminary_testA.txt', 'r', encoding='utf-8') as f:
@@ -29,19 +32,21 @@ with open('./data/preliminary_testA.txt', 'r', encoding='utf-8') as f:
                         break
 
                     if query == '裙长' and '中长裙' in title:
-                        data['key_attr'][query] = '中长裙'
+                        data['key_attr'][query] = '中裙'
                         flag = True
                         break
 
                     if val in title:
-                        data['key_attr'][query] = val
-                        flag = True
-                        break
+                        for all_v, new_val in attr_all_dict[query].items():
+                            if val in all_v:
+                                data['key_attr'][query] = new_val
+                                flag = True
+                                break
                 if flag:
                     break
 
         test_data_list.append(json.dumps(data, ensure_ascii=False)+'\n')
 
-with open('./data/test_attr_A.txt', 'w', encoding='utf-8') as f:
+with open('./data/test_attr_A_54.txt', 'w', encoding='utf-8') as f:
     f.writelines(test_data_list)
         

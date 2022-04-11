@@ -28,28 +28,33 @@ data
 分别为属性字典文件、测试文件、粗标数据、细标数据。
 
 
-生成60w+的属性正负例, 29w的图文正负例：
+##　生成60w+的属性正负例, 29w的图文正负例
 ```
 python generate_train_dataest.py
 ```
 
-生成test的属性值匹配：
+## 生成test的属性值匹配
 ```
 python generate_test_dataset.py
 ```
 
-属性训练
+## 属性训练
 ```
+analyze.ipynb
 python train_attr_match_mlp.py
 ```
 
-图文训练+finetune
+## 图文训练+finetune
+
+修改config里面图文匹配预训练保留的路径
 ```
 python train_all_match.py
 python finetune.py
 ```
 
-测试
+## 测试
+
+修改config里面的模型路径完成测试
 ```
 python test_mlp.py
 ```

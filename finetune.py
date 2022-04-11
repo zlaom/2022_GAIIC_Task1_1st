@@ -11,7 +11,7 @@ import argparse
 import numpy as np
 import scipy.io as scio
 import random
-os.environ["CUDA_VISIBLE_DEVICES"] = '3'
+os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import _LRScheduler
@@ -50,13 +50,22 @@ def get_dataloader(dataset_cfg):
     
     data_path = dataset_cfg['DATA_PATH']
     data_list = []
+    pos_data_list = []
+    neg_data_list = []
     with open(data_path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
         for line in lines:
             data = json.loads(line)
-            data_list.append(data)
-    l = int(len(data_list)*dataset_cfg['RATIO'])
-    train_list, val_list = data_list[:l], data_list[l:]
+            if data['all_match'] == 1:
+                pos_data_list.append(data)
+            else:
+                neg_data_list.append(data)
+    np.random.shuffle(pos_data_list)
+    np.random.shuffle(neg_data_list)        
+    train_list = pos_data_list[:len(pos_data_list)-1000] + neg_data_list[:len(neg_data_list)-1000]
+    val_list = pos_data_list[-1000:] + neg_data_list[-1000:]
+    np.random.shuffle(train_list)
+    np.random.shuffle(val_list)
     train_dataset = GaiicAttrDataset(train_list,)
     val_dataset = GaiicAttrDataset(val_list,)
 
@@ -78,10 +87,7 @@ def train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn, d
     total, correct = 0., 0.
     for step, all_dic in enumerate(train_dataloader):
         optimizer.zero_grad()
-        if epoch==0:
-            warmup_lr_schedule(optimizer, step, optim_cfg['WARMUP_STEPS'], optim_cfg['WARMUP_LR'], optim_cfg['LR'])
         # 
-
         image, text = all_dic['feature'], all_dic['title']
         label = torch.from_numpy(np.array(all_dic['all_match'])).to(device).long()
         image = torch.stack(image, dim=1).to(device).float()
@@ -158,7 +164,7 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
                      train_loss, val_loss,  acc)
         
         torch.save(model.state_dict(),
-                os.path.join(output_folder, 'SE_FINETUNE_MATCH_Train_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
+                os.path.join(output_folder, 'COS_0.5_FINETUNE_MATCH_Train_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
         
 
 

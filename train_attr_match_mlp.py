@@ -11,7 +11,7 @@ import argparse
 import numpy as np
 import scipy.io as scio
 import random
-os.environ["CUDA_VISIBLE_DEVICES"] = '2'
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import _LRScheduler
@@ -86,7 +86,7 @@ def prep_optimizer(optimizer_cfg, model, num_train_optimization_steps):
 
 def get_dataloader(dataset_cfg):
     
-    with open('./data/attr_dic.json', 'r', encoding='utf-8') as f:
+    with open(dataset_cfg['ATTR_PATH'], 'r', encoding='utf-8') as f:
         attr_dic = json.load(f)
     data_path_1 = dataset_cfg['DATA_PATH']
     data_list = []
@@ -96,7 +96,7 @@ def get_dataloader(dataset_cfg):
             data = json.loads(line)
             data_list.append(data)
 
-    l = int(len(data_list) * 0.9)
+    l = int(len(data_list) * dataset_cfg['RATIO'])
     np.random.shuffle(data_list)
     x_train_list = data_list[:l]
     x_val_list = data_list[l:]
@@ -209,7 +209,7 @@ def train(model_cfg, dataset_cfg, optimizer_cfg, device):
                      train_loss, val_loss,  acc)
         
         torch.save(model.state_dict(),
-                os.path.join(output_folder, 'CONCAT_MLP_SE_ATTR_Train_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
+                os.path.join(output_folder, 'NORM_2021_SE_ATTR_Train_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
         
 
 

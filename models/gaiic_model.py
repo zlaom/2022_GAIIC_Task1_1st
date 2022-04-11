@@ -65,36 +65,25 @@ class ITM_ALL_Model(nn.Module):
             nn.Linear(text_dim, image_dim),
             nn.LayerNorm(image_dim)
         )
-        self.concat_linear = nn.Sequential(
-            nn.Linear(image_dim*2, image_dim),
-            nn.LayerNorm(image_dim)
-        )
+        
         self.image_wsa = nn.Sequential(
             nn.Linear(image_dim * 2, image_dim),
             nn.BatchNorm1d(image_dim),
-            nn.Sigmoid()
+            nn.Sigmoid() # change 
         )
         self.text_wsa = nn.Sequential(
             nn.Linear(image_dim * 2, image_dim),
             nn.BatchNorm1d(image_dim),
             nn.Sigmoid()
         )
-
-
-        self.concat_wsa = nn.Sequential(
-            nn.Linear(image_dim * 2, image_dim),
-            nn.BatchNorm1d(image_dim),
-            nn.Sigmoid()
-        )
-        self.fusion_wsa = nn.Sequential(
-            nn.Linear(image_dim * 2, image_dim),
-            nn.BatchNorm1d(image_dim),
-            nn.Sigmoid()
-        )
-
+        
+        # 128 change
         self.itm_head = nn.Sequential(
-            nn.Dropout(0.1),
-            nn.Linear(image_dim, 2),
+            nn.Linear(image_dim, 256),
+            nn.LayerNorm(256),
+            nn.ReLU(),
+            nn.Dropout(),
+            nn.Linear(256, 2),
         )
             
     def forward(self, image, text):
@@ -105,20 +94,45 @@ class ITM_ALL_Model(nn.Module):
         image = self.image_linear(image)
 
         features = torch.cat((image, text), dim=-1)
+        # change
+        image = torch.nn.functional.normalize(image, p=2, dim=-1)
+        text = torch.nn.functional.normalize(text, p=2, dim=-1)
         image_w = self.image_wsa(features)
         text_w = self.text_wsa(features)
         fusion_feature = image * image_w + text * text_w
 
-        concat_feature = self.concat_linear(features)
-        all_feature = torch.cat((fusion_feature, concat_feature), dim=-1)
-        fusion_wsa = self.fusion_wsa(all_feature)
-        concat_wsa = self.concat_wsa(all_feature)
-        all_feature = concat_feature * concat_wsa + fusion_feature * fusion_wsa
-
         logits = self.itm_head(fusion_feature)
+
 
         return logits
 
+
+class ITM_ALL_COS_Model(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.bert = MacBert(cfg['MAC_BERT'])
+        text_dim, image_dim = cfg['TEXT_DIM'], cfg['IMAGE_DIM']
+        self.image_linear = nn.Sequential(
+            nn.Linear(image_dim, 768),
+            nn.LayerNorm(768)
+        )
+        self.text_linear = nn.Sequential(
+            nn.Linear(text_dim, 768),
+            nn.LayerNorm(768)
+        )
+
+            
+    def forward(self, image, text):
+
+        text = self.bert(text)
+        text = self.text_linear(text)
+        image = self.image_linear(image)
+
+        image = torch.nn.functional.normalize(image, p=2, dim=-1)
+        text = torch.nn.functional.normalize(text, p=2, dim=-1)
+        cos = torch.sum(image * text, dim=-1)
+        # cos = (cos + 1) / 2.0
+        return cos
 
 
 class ITM_ATTR_MLP(nn.Module):
@@ -131,41 +145,30 @@ class ITM_ATTR_MLP(nn.Module):
             nn.LayerNorm(image_dim)
         )
         self.text_linear = nn.Sequential(
-            nn.Embedding(80, image_dim),
-            nn.Linear(image_dim, image_dim),
+            nn.Embedding(80, image_dim // 2),
+            nn.Linear(image_dim // 2, image_dim // 2),
+            nn.ReLU(),
+            nn.Linear(image_dim // 2, image_dim),
             nn.LayerNorm(image_dim)
         )
         
-        self.concat_linear = nn.Sequential(
-            nn.Linear(image_dim*2, image_dim),
-            nn.LayerNorm(image_dim)
-        )
-
         self.image_wsa = nn.Sequential(
             nn.Linear(image_dim * 2, image_dim),
-            nn.BatchNorm1d(image_dim),
+            nn.LayerNorm(image_dim),
             nn.Sigmoid()
         )
         self.text_wsa = nn.Sequential(
             nn.Linear(image_dim * 2, image_dim),
-            nn.BatchNorm1d(image_dim),
-            nn.Sigmoid()
-        )
-        
-        self.concat_wsa = nn.Sequential(
-            nn.Linear(image_dim * 2, image_dim),
-            nn.BatchNorm1d(image_dim),
-            nn.Sigmoid()
-        )
-        self.fusion_wsa = nn.Sequential(
-            nn.Linear(image_dim * 2, image_dim),
-            nn.BatchNorm1d(image_dim),
+            nn.LayerNorm(image_dim),
             nn.Sigmoid()
         )
 
         self.itm_head = nn.Sequential(
-            nn.Dropout(0.1),
-            nn.Linear(image_dim, 2),
+            nn.Linear(image_dim, 256),
+            nn.LayerNorm(256),
+            nn.ReLU(),
+            nn.Dropout(),
+            nn.Linear(256, 2),
         )
 
 
@@ -178,13 +181,9 @@ class ITM_ATTR_MLP(nn.Module):
         features = torch.cat((image, text), dim=-1)
         image_w = self.image_wsa(features)
         text_w = self.text_wsa(features)
+        image = F.normalize(image, dim=-1)
+        text = F.normalize(text, dim=-1)
         fusion_feature = image * image_w + text * text_w
-
-        concat_feature = self.concat_linear(features)
-        all_feature = torch.cat((fusion_feature, concat_feature), dim=-1)
-        fusion_wsa = self.fusion_wsa(all_feature)
-        concat_wsa = self.concat_wsa(all_feature)
-        all_feature = concat_feature * concat_wsa + fusion_feature * fusion_wsa
 
         logits = self.itm_head(fusion_feature)
 
