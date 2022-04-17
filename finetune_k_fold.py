@@ -11,14 +11,14 @@ import argparse
 import numpy as np
 import scipy.io as scio
 import random
-os.environ["CUDA_VISIBLE_DEVICES"] = '3'
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.tensorboard import SummaryWriter
 from utils.utils import warmup_lr_schedule, step_lr_schedule
 from data_pre.dataset import GaiicAttrDataset
-from models.gaiic_model import BLIP_Model, ITM_ATTR_Model
+from models.gaiic_model import BLIP_Model, ITM_ALL_Model
 import tqdm
 
         
@@ -40,7 +40,7 @@ def set_seed_logger(dataset_cfg):
 
 
 def init_model(model_cfg, device):
-    model = ITM_ATTR_Model(model_cfg)
+    model = ITM_ALL_Model(model_cfg)
     model.load_state_dict(torch.load(model_cfg['CHECKPOINT_PATH']))
     model = model.to(device)
     return model
@@ -87,9 +87,6 @@ def train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn, d
     total, correct = 0., 0.
     for step, all_dic in enumerate(train_dataloader):
         optimizer.zero_grad()
-        if epoch==0:
-            warmup_lr_schedule(optimizer, step, optim_cfg['WARMUP_STEPS'], optim_cfg['WARMUP_LR'], optim_cfg['LR'])
-        # 
 
         image, text = all_dic['feature'], all_dic['title']
         label = torch.from_numpy(np.array(all_dic['all_match'])).to(device).long()
@@ -145,7 +142,7 @@ def train(model_cfg, dataset_cfg, device, per_k, k_fold):
     train_dataloader, val_dataloader, train_num, val_num = get_dataloader(dataset_cfg, per_k, k_fold)
     num_train_optimization_steps = len(train_dataloader) * dataset_cfg['EPOCHS']
     
-    optimizer = torch.optim.AdamW(params=model.parameters(), lr=1e-5)
+    optimizer = torch.optim.AdamW(params=model.parameters(), lr=5e-5)
 
     loss_fn_1 = nn.CrossEntropyLoss().cuda()
     writer = SummaryWriter(log_dir=dataset_cfg['OUT_PATH'])

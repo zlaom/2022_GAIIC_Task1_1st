@@ -4,9 +4,10 @@ import json
 
 def main():
 
-    all_path_list = ['./result/all_0.9356_attr_0.9339.txt',
-                     './result/NORM_MLP_SE_all_0.9420_attr_0.9300.txt',
-                     './result/NORM_MLP_SE_all_0.944_attr_0.931.txt',
+    all_path_list = [
+                     './result/test_A_split_no_0.9445_attr_0.9339.txt',
+                     './result/test_A_split_no_0.9570_attr_0.9300.txt',
+                     './result/pred_title0.9398_attr0.9356.txt',
                      ]
 
     k_fold = len(all_path_list)
@@ -38,9 +39,9 @@ def main():
             else:
                 data['match'][key] = 0
 
-        # if data['match']['图文'] == 1:
-        #     for key, val in data['match'].items():
-        #         data['match'][key] = 1
+        if data['match']['图文'] == 1:
+            for key, val in data['match'].items():
+                data['match'][key] = 1
 
         rets.append(json.dumps(data, ensure_ascii=False)+'\n')
     
@@ -48,7 +49,7 @@ def main():
     print('postive num: ', count)
 
     os.makedirs('./result', exist_ok=True)
-    output_path = './result/SE_0.93_3_' + str(k_fold) + '_match.txt'
+    output_path = './result/NEW_SE_0.9400_' + str(k_fold) + '_match.txt'
     with open(output_path, 'w', encoding='utf-8') as f:
         f.writelines(rets)
 

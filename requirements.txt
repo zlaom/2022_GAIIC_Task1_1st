@@ -1,96 +1,111 @@
-argon2-cffi==21.1.0
-attrs==21.2.0
-backcall==0.2.0
-bleach==4.1.0
-certifi==2021.10.8
-cffi==1.15.0
-charset-normalizer==2.0.9
-cycler==0.11.0
-debugpy==1.5.1
-decorator==5.1.0
-defusedxml==0.7.1
-dgl-cu110==0.7.2
-dgl-cu113==0.8a211214
-einops==0.3.2
-entrypoints==0.3
-fonttools==4.28.5
-glog==0.3.1
-h5py==3.6.0
-idna==3.3
-importlib-resources==5.4.0
-ipykernel==6.6.0
-ipython==7.30.1
-ipython-genutils==0.2.0
-ipywidgets==7.6.5
-jedi==0.18.1
-Jinja2==3.0.3
-joblib==1.1.0
-jsonschema==4.2.1
-jupyter==1.0.0
-jupyter-client==7.1.0
-jupyter-console==6.4.0
-jupyter-core==4.9.1
-jupyterlab-pygments==0.1.2
-jupyterlab-widgets==1.0.2
-kiwisolver==1.3.2
-lib==4.0.0
+absl-py @ file:///tmp/build/80754af9/absl-py_1615411197583/work
+aiohttp @ file:///tmp/build/80754af9/aiohttp_1602530275854/work
+ase==3.21.1
+async-timeout==3.0.1
+attrs @ file:///tmp/build/80754af9/attrs_1604765588209/work
+blinker==1.4
+braceexpand==0.1.7
+brotlipy==0.7.0
+cached-property==1.5.2
+cachetools @ file:///tmp/build/80754af9/cachetools_1611600262290/work
+certifi==2020.12.5
+cffi @ file:///tmp/build/80754af9/cffi_1613246439577/work
+chardet @ file:///tmp/build/80754af9/chardet_1605303175790/work
+click @ file:///home/linux1/recipes/ci/click_1610990599742/work
+configparser==5.0.2
+coverage @ file:///tmp/build/80754af9/coverage_1614614208500/work
+cryptography @ file:///tmp/build/80754af9/cryptography_1616769282133/work
+cycler==0.10.0
+Cython @ file:///tmp/build/80754af9/cython_1618435161347/work
+dataclasses @ file:///tmp/build/80754af9/dataclasses_1614363715916/work
+decorator==4.4.2
+docker-pycreds==0.4.0
+faiss==1.4.0
+filelock==3.4.1
+ftfy @ file:///tmp/build/80754af9/ftfy_1598643610002/work
+gitdb==4.0.7
+GitPython==3.1.14
+google-auth @ file:///tmp/build/80754af9/google-auth_1618522294691/work
+google-auth-oauthlib @ file:///tmp/build/80754af9/google-auth-oauthlib_1617120569401/work
+googledrivedownloader==0.4
+grpcio @ file:///tmp/build/80754af9/grpcio_1614884176509/work
+h5py==3.1.0
+huggingface-hub==0.4.0
+idna @ file:///home/linux1/recipes/ci/idna_1610986105248/work
+idna-ssl @ file:///tmp/build/80754af9/idna_ssl_1611752490495/work
+imagenetv2-pytorch @ git+https://github.com/modestyachts/ImageNetV2_pytorch@9017469c74e454c444bb48d19a4aa43211cc1f3a
+importlib-metadata @ file:///tmp/build/80754af9/importlib-metadata_1617877310517/work
+isodate==0.6.0
+Jinja2==3.0.1
+joblib @ file:///home/conda/feedstock_root/build_artifacts/joblib_1612898609989/work
+kiwisolver==1.3.1
+littleutils==0.2.2
+llvmlite==0.36.0
+Markdown @ file:///tmp/build/80754af9/markdown_1614363833670/work
 MarkupSafe==2.0.1
-matplotlib==3.5.1
-matplotlib-inline==0.1.3
-mistune==0.8.4
-mkl-fft==1.3.1
-mkl-random @ file:///tmp/build/80754af9/mkl_random_1626186064646/work
-mkl-service==2.4.0
-nbclient==0.5.9
-nbconvert==6.3.0
-nbformat==5.1.3
-nest-asyncio==1.5.4
-networkx==2.6.3
-notebook==6.4.6
-numpy==1.21.4
-olefile @ file:///Users/ktietz/demo/mc3/conda-bld/olefile_1629805411829/work
+matplotlib==3.3.4
+mkl-fft==1.3.0
+mkl-random==1.1.1
+mkl-service==2.3.0
+multidict @ file:///tmp/build/80754af9/multidict_1600456401639/work
+networkx==2.5.1
+numba==0.53.1
+numpy @ file:///tmp/build/80754af9/numpy_and_numpy_base_1603487797006/work
+oauthlib==3.1.0
+ogb==1.3.1
+olefile==0.46
+outdated==0.2.1
 packaging==21.3
-pandas==1.3.4
-pandocfilters==1.5.0
-parso==0.8.3
-pexpect==4.8.0
-pickleshare==0.7.5
-Pillow==9.0.0
-prometheus-client==0.12.0
-prompt-toolkit==3.0.23
-protobuf==3.19.4
-ptyprocess==0.7.0
-pycparser==2.21
-Pygments==2.10.0
-pyparsing==3.0.6
-pyrsistent==0.18.0
-python-dateutil==2.8.2
-python-gflags==3.1.2
-pytz==2021.3
+pandas @ file:///tmp/build/80754af9/pandas_1602088135163/work
+pathtools==0.1.2
+Pillow @ file:///tmp/build/80754af9/pillow_1617386154532/work
+promise==2.3
+protobuf==3.14.0
+psutil==5.8.0
+pyarrow==4.0.0
+pyasn1==0.4.8
+pyasn1-modules==0.2.8
+pycparser @ file:///tmp/build/80754af9/pycparser_1594388511720/work
+PyJWT==1.7.1
+pyOpenSSL @ file:///tmp/build/80754af9/pyopenssl_1608057966937/work
+pyparsing==2.4.7
+PySocks @ file:///tmp/build/80754af9/pysocks_1605305763431/work
+python-dateutil @ file:///home/ktietz/src/ci/python-dateutil_1611928101742/work
+python-louvain==0.15
+pytz @ file:///tmp/build/80754af9/pytz_1612215392582/work
 PyYAML==5.4.1
-pyzmq==22.3.0
-qtconsole==5.2.1
-QtPy==1.11.3
-requests==2.26.0
-scikit-learn==1.0.2
-scipy==1.7.3
-Send2Trash==1.8.0
-six @ file:///tmp/build/80754af9/six_1644875935023/work
-tensorboardX==2.4.1
-terminado==0.12.1
-testpath==0.5.0
-threadpoolctl==3.1.0
-torch==1.10.0
+rdflib==5.0.0
+regex @ file:///tmp/build/80754af9/regex_1617569710506/work
+requests @ file:///tmp/build/80754af9/requests_1608241421344/work
+requests-oauthlib==1.3.0
+rsa @ file:///tmp/build/80754af9/rsa_1614366226499/work
+sacremoses==0.0.49
+scikit-learn @ file:///home/conda/feedstock_root/build_artifacts/scikit-learn_1605985617292/work
+scipy @ file:///home/conda/feedstock_root/build_artifacts/scipy_1604304779264/work
+sentry-sdk==1.1.0
+shortuuid==1.0.1
+six @ file:///tmp/build/80754af9/six_1605205335545/work
+sklearn==0.0
+smmap==4.0.0
+subprocess32==3.5.4
+tensorboard @ file:///home/builder/ktietz/aggregate/tensorflow_recipes/ci_te/tensorboard_1614593728657/work/tmp_pip_dir
+tensorboard-plugin-wit==1.6.0
+threadpoolctl @ file:///tmp/tmp79xdzxkt/threadpoolctl-2.1.0-py3-none-any.whl
+tokenizers==0.11.6
+torch==1.7.1
+torch-geometric==1.7.0
+torch-scatter @ https://pytorch-geometric.com/whl/torch-1.7.0+cu110/torch_scatter-2.0.6-cp36-cp36m-linux_x86_64.whl
+torch-tb-profiler==0.4.0
 torchaudio==0.7.0a0+a853dff
-torchtools==0.1.4
 torchvision==0.8.2
-tornado==6.1
-tqdm==4.62.3
-traitlets==5.1.1
-typing_extensions==4.0.1
-urllib3==1.26.7
-wcwidth==0.2.5
-webencodings==0.5.1
-widgetsnbextension==3.5.2
-yapf @ file:///tmp/build/80754af9/yapf_1615749224965/work
-zipp==3.6.0
+tqdm @ file:///tmp/build/80754af9/tqdm_1615925068909/work
+transformers==4.17.0
+typing-extensions @ file:///home/ktietz/src/ci_mi/typing_extensions_1612808209620/work
+urllib3 @ file:///tmp/build/80754af9/urllib3_1615837158687/work
+wandb==0.10.30
+wcwidth @ file:///tmp/build/80754af9/wcwidth_1593447189090/work
+-e git+https://github.com/tmbdev/webdataset.git@a4f3ec08551b42f20b20cdc1ba32d12536eabc15#egg=webdataset
+Werkzeug @ file:///home/ktietz/src/ci/werkzeug_1611932622770/work
+wilds==1.1.0
+yarl @ file:///tmp/build/80754af9/yarl_1606939915466/work
+zipp @ file:///tmp/build/80754af9/zipp_1615904174917/work

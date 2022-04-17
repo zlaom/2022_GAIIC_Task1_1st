@@ -12,7 +12,7 @@ MODEL:
     IMAGE_DIM: 2048
     NUM_ATTR: 12
   ALL_MATCH:
-    CHECKPOINT_PATH: checkpoints/train/PRETRAIN_0.5_epoch49_val_loss0.2365_val_acc0.9055_.pth
+    CHECKPOINT_PATH: checkpoints/train/CATMODEL_epoch151_val_loss0.2137_val_acc0.9155_.pth
     MAC_BERT:
       NAME: MAC_BERT
       MODEL_PATH: data/MacBert
@@ -42,9 +42,10 @@ OPTIM:
 
 FINETUNE:
   DATA_PATH: ./data/finetune_all_match_0.3.txt
+  DATA_PATH_2: ./data/new_fine.txt
   ATTR_PATH: ./data/attr_to_attrvals.json
   OUT_PATH: checkpoints/
-  EPOCHS: 40
+  EPOCHS: 10
   RATIO: 0.8
   SHUFFLE: FALSE
   SEED: 2022
@@ -52,7 +53,7 @@ FINETUNE:
   VAL_BATCH: 256
   NUM_WORKERS: 4
   LOG_STEP: 10
-  K_FOLD: 9
+  K_FOLD: 5
 
 
 ATTR_TRAIN:
@@ -87,6 +88,6 @@ ALL_TRAIN:
 TEST:
   DATA_PATH: ./data/test_attr_A.txt
   ATTR_PATH: ./data/attr_to_attrvals.json
-  OUT_PATH: result/NORM_MLP_SE_all_0.9445_attr_0.9339.txt
-  ATTR_CHECKPOINT_PATH: checkpoints/train/NORM_SE_ATTR_Train_epoch9_val_loss0.1702_val_acc0.9339_.pth
-  ALL_CHECKPOINT_PATH: checkpoints/finetune/COS_0.5_FINETUNE_MATCH_Train_epoch9_val_loss0.1495_val_acc0.9445_.pth
+  OUT_PATH: result/test_A_split_no_0.9570_attr_0.9311.txt
+  ATTR_CHECKPOINT_PATH: checkpoints/train/NORM_2021_SE_ATTR_Train_epoch7_val_loss0.1676_val_acc0.9311_.pth
+  ALL_CHECKPOINT_PATH: checkpoints/finetune/EPOCH_120_ADD_CHANGE_2151_FINETUNE_MATCH_Train_epoch3_val_loss0.1235_val_acc0.9570_.pth

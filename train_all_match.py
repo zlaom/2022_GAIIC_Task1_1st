@@ -11,14 +11,14 @@ import argparse
 import numpy as np
 import scipy.io as scio
 import random
-os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.tensorboard import SummaryWriter
 from utils.utils import warmup_lr_schedule, step_lr_schedule
 from data_pre.dataset import GaiicAttrDataset, GaiicMatchDataset
-from models.gaiic_model import BLIP_Model, ITM_ATTR_Model, ITM_ALL_Model
+from models.gaiic_model import ITM_ALL_CAT_Model, ITM_ATTR_Model, ITM_ALL_Model
 import tqdm
 
         
@@ -30,7 +30,7 @@ def set_seed_logger(dataset_cfg):
     torch.cuda.manual_seed(dataset_cfg['SEED'])
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
-
+    
     logging.basicConfig(level=logging.INFO,
                         format=
                         '%(asctime)s - %(levelname)s: %(message)s',
@@ -40,7 +40,7 @@ def set_seed_logger(dataset_cfg):
 
 
 def init_model(model_cfg, device):
-    model = ITM_ALL_Model(model_cfg)
+    model = ITM_ALL_CAT_Model(model_cfg)
     model = model.to(device)
     return model
 
@@ -61,6 +61,7 @@ def get_dataloader(dataset_cfg):
         for line in lines:
             data = json.loads(line)
             data_list.append(data)
+    
     np.random.shuffle(data_list)
     train_list = data_list[:-2000]
     val_list = data_list[-2000:]
@@ -170,7 +171,7 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
                      train_loss, val_loss,  acc)
         
         torch.save(model.state_dict(),
-                os.path.join(output_folder, 'rm_add_change_PRETRAIN_0.5_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
+                os.path.join(output_folder, 'CATMODEL_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch+100, val_loss, acc)))
         
 
 

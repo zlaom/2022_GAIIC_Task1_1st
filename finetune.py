@@ -17,8 +17,8 @@ import torch.nn as nn
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.tensorboard import SummaryWriter
 from utils.utils import warmup_lr_schedule, step_lr_schedule
-from data_pre.dataset import GaiicAttrDataset
-from models.gaiic_model import BLIP_Model, ITM_ATTR_Model, ITM_ALL_Model
+from data_pre.dataset import GaiicAttrDataset, GaiicFinetuneDataset
+from models.gaiic_model import ITM_ALL_CAT_Model, ITM_ATTR_Model, ITM_ALL_Model
 import tqdm
 
         
@@ -40,7 +40,7 @@ def set_seed_logger(dataset_cfg):
 
 
 def init_model(model_cfg, device):
-    model = ITM_ALL_Model(model_cfg)
+    model = ITM_ALL_CAT_Model(model_cfg)
     model.load_state_dict(torch.load(model_cfg['CHECKPOINT_PATH']))
     model = model.to(device)
     return model
@@ -164,7 +164,7 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
                      train_loss, val_loss,  acc)
         
         torch.save(model.state_dict(),
-                os.path.join(output_folder, 'COS_0.5_FINETUNE_MATCH_Train_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
+                os.path.join(output_folder, 'CAT_51_ADD_CHANGE_2244_FINETUNE_MATCH_Train_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
         
 
 

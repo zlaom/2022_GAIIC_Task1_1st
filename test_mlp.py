@@ -12,9 +12,12 @@ import yaml
 import collections
 from models.gaiic_model import ITM_ATTR_MLP, ITM_ATTR_Model, ITM_ALL_Model
 
-
+import sys
+import codecs
+sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
 
 if __name__ == '__main__':
+    
     parser = argparse.ArgumentParser(description='Feature Compression Reconstruction')
     parser.add_argument('--cfg_file', type=str, default='config.yaml', help='Path of config files')
     args = parser.parse_args()
@@ -66,6 +69,8 @@ if __name__ == '__main__':
             feature = np.array(data['feature']).astype(np.float32)
             texts = data['title']
             new_query = [x for x in data['query'] if x != '图文']
+            # print(new_query)
+            # print(data['key_attr'])
             attr_texts = [data['key_attr'][x] for x in new_query]
             attr_idx = [key_dic[k+v] for k,v in data['key_attr'].items()]
             attr_features = torch.from_numpy(feature)[None, ].repeat(len(attr_texts), 1)
@@ -94,7 +99,8 @@ if __name__ == '__main__':
                     dic[key] = 1
                 else:
                     dic[key] = 0
-
+                # if dic['图文'] == 1:
+                #     dic[key] = 1
             
             ret = {
                 "img_name": data["img_name"],

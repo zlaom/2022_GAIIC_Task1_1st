@@ -10,7 +10,11 @@ class GaiicAttrDataset(torch.utils.data.Dataset):
         self.data = data
         
     def __getitem__(self, index):
-        return self.data[index]
+        new_dic = {}
+        new_dic['feature'] = self.data[index]['feature']
+        new_dic['title'] = self.data[index]['title']
+        new_dic['all_match'] = self.data[index]['all_match']
+        return new_dic
 
     def __len__(self):
         return len(self.data)
@@ -79,14 +83,9 @@ class GaiicMatchDataset(torch.utils.data.Dataset):
         title = self.data[index]['title']
         keys = list(self.data[index]['key_attr'].keys())
         if p > 0.5:
-            # 同义替换，删
+            # 同义替换
             p_2 = np.random.rand()
             if p_2 > 0.5:
-                keys = self.get_random_key(keys)
-                for key in keys:
-                    title.replace(self.data[index]['key_attr'][key], '', 1)
-                    break
-            else:
                 pick_key = keys[np.random.randint(len(keys))]
                 pick_val = self.data[index]['key_attr'][pick_key]
                 new_val = self.get_match_value(pick_key, pick_val, self.attr_key)
@@ -102,8 +101,79 @@ class GaiicMatchDataset(torch.utils.data.Dataset):
             else:
                 new_keys = list(self.attr_key.keys())
                 title = self.get_dis_key_value(new_keys, keys, self.attr_key) + title
+            # keys = self.get_random_key(keys)
+            # for key in keys:
+            #     title = self.get_title_mask(title, key, self.data[index]['key_attr'][key], self.attr_key)
             new_dic['all_match'] = 0
         new_dic['title'] = title
+
+        return new_dic
+
+    def __len__(self):
+        return len(self.data)
+
+
+
+class GaiicAttrFinetuneDataset(torch.utils.data.Dataset):
+    def __init__(self, data, path) -> None:
+        super().__init__()
+        self.data = data
+        with open(path, 'r', encoding='utf-8') as f:
+            attr_key = json.load(f)
+        self.attr_key = attr_key
+    
+
+    def get_match_value(self, key, val, attr_key):
+        # 正样本属性产生
+        values = attr_key[key]
+        key_index = 0
+        for i in range(len(values)):
+            if val in values[i]:
+                key_index = i
+                break
+        sub_values = values[key_index]
+        new_index = np.random.randint(len(sub_values))
+        new_sub_val = sub_values[new_index]
+        return new_sub_val
+
+    def get_dis_value(self, key, val, attr_key):
+        # 负样本, 随机替换属性值
+        values = attr_key[key]
+        key_index = 0
+        for i in range(len(values)):
+            if val in values[i]:
+                key_index = i
+                break
+        new_index = np.random.randint(len(values))
+        while new_index == key_index:
+            new_index = np.random.randint(len(values))
+        sub_val = values[new_index]
+        sub_sub_val = sub_val[np.random.randint(len(sub_val))]
+
+        return sub_sub_val
+
+    def __getitem__(self, index):
+        new_dic = {}
+        new_dic['feature'] = self.data[index]['feature']
+        p = np.random.rand()
+        title = self.data[index]['title']
+        keys = list(self.data[index]['key_attr'].keys())
+        if p > 0.5:
+            # 同义替换
+            pick_key = keys[np.random.randint(len(keys))]
+            attr_value = self.data[index]['key_attr'][pick_key]
+            p_2 = np.random.rand()
+            if p_2 > 0.5:
+                new_val = self.get_match_value(pick_key, attr_value, self.attr_key)
+                attr_value = new_val
+            new_dic['all_match'] = 1
+        else:
+            pick_key = keys[np.random.randint(len(keys))]
+            pick_value = self.data[index]['key_attr'][pick_key]
+            new_val = self.get_dis_value(pick_key, pick_value, self.attr_key)
+            attr_value = new_val
+            new_dic['all_match'] = 0
+        new_dic['attr_value'] = attr_value
 
         return new_dic
 

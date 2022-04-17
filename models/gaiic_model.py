@@ -107,32 +107,47 @@ class ITM_ALL_Model(nn.Module):
         return logits
 
 
-class ITM_ALL_COS_Model(nn.Module):
+class ITM_ALL_CAT_Model(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         self.bert = MacBert(cfg['MAC_BERT'])
         text_dim, image_dim = cfg['TEXT_DIM'], cfg['IMAGE_DIM']
         self.image_linear = nn.Sequential(
-            nn.Linear(image_dim, 768),
-            nn.LayerNorm(768)
+            nn.Linear(image_dim, text_dim),
+            nn.LayerNorm(text_dim)
         )
         self.text_linear = nn.Sequential(
-            nn.Linear(text_dim, 768),
-            nn.LayerNorm(768)
+            nn.Linear(text_dim, text_dim),
+            nn.LayerNorm(text_dim)
         )
-
+        
+        self.fusion_layer = nn.Sequential(
+            nn.Linear(text_dim*2, text_dim),
+            nn.LayerNorm(text_dim)
+        )
+        
+        
+        # 128 change
+        self.itm_head = nn.Sequential(
+            nn.Linear(text_dim, 256),
+            # nn.LayerNorm(256),
+            nn.ReLU(),
+            nn.Dropout(),
+            nn.Linear(256, 2),
+        )
             
     def forward(self, image, text):
 
         text = self.bert(text)
         text = self.text_linear(text)
+
         image = self.image_linear(image)
 
-        image = torch.nn.functional.normalize(image, p=2, dim=-1)
-        text = torch.nn.functional.normalize(text, p=2, dim=-1)
-        cos = torch.sum(image * text, dim=-1)
-        # cos = (cos + 1) / 2.0
-        return cos
+        features = torch.cat((image, text), dim=-1)
+        # change
+        features = self.fusion_layer(features)
+        logits = self.itm_head(features)
+        return logits
 
 
 class ITM_ATTR_MLP(nn.Module):
