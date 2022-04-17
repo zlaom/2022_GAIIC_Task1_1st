@@ -11,7 +11,7 @@ import copy
 from model.bert.bertconfig import BertConfig
 from model.fusemodel import FuseModel
 
-gpus = '0'
+gpus = '1'
 batch_size = 128
 max_epoch = 300
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
@@ -20,7 +20,7 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 2
 
-save_dir = 'output/title_pretrain/word_match/0l6l2exp/'
+save_dir = 'output/title_pretrain/fusematch/0l6l2exp/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
@@ -38,7 +38,10 @@ attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
 
 # dataset 自监督预训练任务，没有验证集
 class SplitDataset(Dataset):
-    def __init__(self, input_filename, vocab_dict):
+    def __init__(self, input_filename, vocab_dict, attr_dict_file):
+        with open(attr_dict_file, 'r') as f:
+            attr_dict = json.load(f)
+        self.negative_dict = self.get_negative_dict(attr_dict)
         # 取出所有可替换的词及出现的次数比例
         words_list = []
         proba_list = []
@@ -57,7 +60,16 @@ class SplitDataset(Dataset):
                     item = json.loads(line)
                     if item['match']['图文']: # 训练集图文必须匹配
                         self.items.append(item)
-                
+    
+    def get_negative_dict(self, attr_dict):
+        negative_dict = {}
+        for query, attr_list in attr_dict.items():
+            for attr in attr_list:
+                l = attr_list.copy()
+                l.remove(attr)
+                negative_dict[attr] = l
+        return negative_dict
+    
     def __len__(self):
         return len(self.items)
     
@@ -69,13 +81,16 @@ class SplitDataset(Dataset):
         split_label = torch.ones(20)
         for i, word in enumerate(split):
             if random.random() > 0.5: # 替换
-                new_word = np.random.choice(self.words_list, p=self.proba_list)
-                split[i] = new_word
-                if new_word != word: # 存在new_word和word相同的情况
+                if word in self.negative_dict:
+                    split[i] = random.sample(self.negative_dict[word], 1)[0]
                     split_label[i] = 0
+                else:
+                    new_word = np.random.choice(self.words_list, p=self.proba_list)
+                    split[i] = new_word
+                    if new_word != word: # 存在new_word和word相同的情况
+                        split_label[i] = 0
 
         return image, split, split_label
-
             
 
 # data
@@ -94,7 +109,7 @@ def collate_fn(batch):
     labels = torch.stack(labels)
     return tensors, splits, labels
 
-train_dataset = SplitDataset(train_file, vocab_dict)
+train_dataset = SplitDataset(train_file, vocab_dict, attr_dict_file)
 train_dataloader = DataLoader(
         train_dataset,
         batch_size=batch_size,
@@ -104,7 +119,7 @@ train_dataloader = DataLoader(
         drop_last=True,
         collate_fn=collate_fn,
     )
-val_dataset = SplitDataset(val_file, vocab_dict)
+val_dataset = SplitDataset(val_file, vocab_dict, attr_dict_file)
 val_dataloader = DataLoader(
         val_dataset,
         batch_size=batch_size,

@@ -13,16 +13,16 @@ from model.fusemodel import FuseModel
 gpus = '4'
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
-split_layers = 2
-fuse_layers = 4
+split_layers = 0
+fuse_layers = 6
 n_img_expand = 2
-vocab_file = 'dataset/vocab/vocab.txt'
 
+ckpt_path = 'output/split_finetune/clsmatch/keyattrreplace/0l6lexp2/0.9351.pth'
+
+vocab_file = 'dataset/vocab/vocab.txt'
 attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
 test_file = 'data/equal_split_word/test4000.txt'
-ckpt_path = 'output/title_finetune/keyattrmatch/0.9328.pth'
 out_file = "pred_title.txt"
-
 with open(attr_dict_file, 'r') as f:
     attr_dict = json.load(f)
     

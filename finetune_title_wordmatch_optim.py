@@ -10,91 +10,77 @@ import copy
 
 from model.bert.bertconfig import BertConfig
 from model.fusemodel import FuseModel
+from utils.lr_decay import param_groups_lrd
 
 gpus = '0'
 batch_size = 128
-max_epoch = 300
+max_epoch = 100
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 split_layers = 0
 fuse_layers = 6
 n_img_expand = 2
 
-save_dir = 'output/title_pretrain/word_match/0l6l2exp/'
+lr = 1e-5
+
+save_dir = 'output/title_finetune/wordmatch/0l6l2exp_layerdecay/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
 
+LOAD_CKPT = True
+ckpt_file = 'output/title_pretrain/word_match/0l6l2exp_wd/0.8837.pth'
 
-train_file = 'data/equal_split_word/title/fine40000.txt,data/equal_split_word/coarse89588.txt'
-# train_file = 'data/equal_split_word/title/fine40000.txt'
-# val_file = 'data/equal_split_word/title/fine700.txt,data/equal_split_word/title/coarse1412.txt'
-val_file = 'data/equal_split_word/title/fine9000.txt'
+train_file = 'data/equal_split_word/title/fine9000.txt,data/equal_split_word/title/coarse9000.txt'
+val_file = 'data/equal_split_word/title/fine700.txt,data/equal_split_word/title/coarse1412.txt'
 # train_file = 'data/equal_split_word/fine45000.txt'
-vocab_dict_file = 'dataset/vocab/vocab_dict.json'
+# vocab_dict_file = 'dataset/vocab/vocab_dict.json'
 vocab_file = 'dataset/vocab/vocab.txt'
 attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
 
 
 # dataset 自监督预训练任务，没有验证集
 class SplitDataset(Dataset):
-    def __init__(self, input_filename, vocab_dict):
-        # 取出所有可替换的词及出现的次数比例
-        words_list = []
-        proba_list = []
-        for word, n in vocab_dict.items():
-            words_list.append(word)
-            proba_list.append(n)
-        self.words_list = words_list 
-        proba_list = np.array(proba_list)
-        self.proba_list = proba_list / np.sum(proba_list)
-
+    def __init__(self, input_filename):
         # 提取数据
         self.items = []
         for file in input_filename.split(','):
             with open(file, 'r') as f:
                 for line in tqdm(f):
                     item = json.loads(line)
-                    if item['match']['图文']: # 训练集图文必须匹配
-                        self.items.append(item)
+                    self.items.append(item)
                 
     def __len__(self):
         return len(self.items)
-    
-    def __getitem__(self, idx):
-        image = torch.tensor(self.items[idx]['feature'])
-        split = self.items[idx]['vocab_split']
-        split = copy.deepcopy(split) # 要做拷贝，否则会改变self.items的值
-        
-        split_label = torch.ones(20)
-        for i, word in enumerate(split):
-            if random.random() > 0.5: # 替换
-                new_word = np.random.choice(self.words_list, p=self.proba_list)
-                split[i] = new_word
-                if new_word != word: # 存在new_word和word相同的情况
-                    split_label[i] = 0
 
-        return image, split, split_label
+        
+    def __getitem__(self, idx):
+        item = self.items[idx]
+        image = torch.tensor(item['feature'])
+        split = item['vocab_split']
+        label = item['match']['图文']
+
+        return image, split, label
 
             
 
 # data
-with open(vocab_dict_file, 'r') as f:
-    vocab_dict = json.load(f)
-    
 def collate_fn(batch):
     tensors = []
     splits = []
     labels = []
-    for feature, split, split_label in batch:
+
+    for feature, split, label in batch:
         tensors.append(feature)
         splits.append(split)
-        labels.append(split_label)
+        labels.append(label)
+
     tensors = torch.stack(tensors)
-    labels = torch.stack(labels)
+    labels = torch.tensor(labels)
+
     return tensors, splits, labels
 
-train_dataset = SplitDataset(train_file, vocab_dict)
+train_dataset = SplitDataset(train_file)
 train_dataloader = DataLoader(
         train_dataset,
         batch_size=batch_size,
@@ -104,7 +90,7 @@ train_dataloader = DataLoader(
         drop_last=True,
         collate_fn=collate_fn,
     )
-val_dataset = SplitDataset(val_file, vocab_dict)
+val_dataset = SplitDataset(val_file)
 val_dataloader = DataLoader(
         val_dataset,
         batch_size=batch_size,
@@ -119,10 +105,22 @@ val_dataloader = DataLoader(
 split_config = BertConfig(num_hidden_layers=split_layers)
 fuse_config = BertConfig(num_hidden_layers=fuse_layers)
 model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
+if LOAD_CKPT:
+    model.load_state_dict(torch.load(ckpt_file))
 model.cuda()
 
 # optimizer 
-optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5)
+no_weight_decay_list = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
+param_groups = param_groups_lrd(
+    model=model, 
+    num_layers=fuse_config.num_hidden_layers,
+    lr = lr,
+    weight_decay=0.05,
+    no_weight_decay_list=no_weight_decay_list,
+    layer_decay=1.0 # 1.0代表没有layer_decay
+    )
+
+optimizer = torch.optim.AdamW(param_groups, lr=lr)
 
 # loss
 loss_fn = torch.nn.BCEWithLogitsLoss()
@@ -136,14 +134,8 @@ def evaluate(model, val_dataloader):
     for batch in tqdm(val_dataloader):
         images, splits, labels = batch 
         images = images.cuda()
-        logits, mask = model(images, splits, word_match=True)
-        logits = logits.squeeze(2).cpu()
-        
-        _, W = logits.shape
-        labels = labels[:, :W].float()
-        mask = mask.to(torch.bool)
-        logits = logits[mask]
-        labels = labels[mask]
+        logits = model(images, splits)
+        logits = logits.squeeze(1).cpu()
         
         logits = torch.sigmoid(logits)
         logits[logits>0.5] = 1
@@ -169,19 +161,13 @@ for epoch in range(max_epoch):
         images, splits, labels = batch 
         
         images = images.cuda()
+        labels = labels.float().cuda()
         
-        logits, mask = model(images, splits, word_match=True)
-        logits = logits.squeeze(2)
-        
-        _, W = logits.shape
-        labels = labels[:, :W].float().cuda()
-        
-        mask = mask.to(torch.bool)
-        logits = logits[mask]
-        labels = labels[mask]
+        logits = model(images, splits)
+        logits = logits.squeeze(1)
 
         # train acc
-        if (i+1)%200 == 0:
+        if (i+1)%80 == 0:
             train_acc = correct / total
             correct = 0
             total = 0

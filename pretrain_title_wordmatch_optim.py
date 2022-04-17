@@ -10,8 +10,9 @@ import copy
 
 from model.bert.bertconfig import BertConfig
 from model.fusemodel import FuseModel
+from utils.lr_decay import param_groups_lrd
 
-gpus = '0'
+gpus = '4'
 batch_size = 128
 max_epoch = 300
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
@@ -20,7 +21,7 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 2
 
-save_dir = 'output/title_pretrain/word_match/0l6l2exp/'
+save_dir = 'output/title_pretrain/word_match/0l6l2exp_wd/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
@@ -122,7 +123,16 @@ model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expa
 model.cuda()
 
 # optimizer 
-optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5)
+no_weight_decay_list = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
+param_groups = param_groups_lrd(
+    model=model, 
+    num_layers=fuse_config.num_hidden_layers,
+    weight_decay=0.05,
+    no_weight_decay_list=no_weight_decay_list,
+    layer_decay=1.0 # 1.0代表没有layer_decay
+    )
+
+optimizer = torch.optim.AdamW(param_groups, lr=1e-5)
 
 # loss
 loss_fn = torch.nn.BCEWithLogitsLoss()
