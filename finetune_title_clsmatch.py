@@ -11,23 +11,32 @@ import copy
 from model.bert.bertconfig import BertConfig
 from model.fusemodel import FuseModel
 
+from utils.lr_sched import adjust_learning_rate
+
 gpus = '4'
 batch_size = 128
 max_epoch = 100
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 split_layers = 0
-fuse_layers = 6
-n_img_expand = 2
+fuse_layers = 10
+n_img_expand = 6
 
-save_dir = 'output/split_finetune/clsmatch/keyattrreplace/0l6lexp2/'
+
+# adjust learning rate
+LR_SCHED = False
+lr = 1e-5
+min_lr = 1e-6
+warmup_epochs = 0
+
+save_dir = 'output/split_finetune/clsmatch/fusereplace/0l10lexp6_lr/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
 
 FREEZE = False
 LOAD_CKPT = True
-ckpt_file = 'output/split_pretrain/clsmatch/keyattrreplace/0l6lexp2/0.7841.pth'
+ckpt_file = 'output/split_pretrain/clsmatch/fusereplace/0l10lexp6_bs64/0.9205.pth'
 
 train_file = 'data/equal_split_word/title/fine9000.txt,data/equal_split_word/title/coarse9000.txt'
 val_file = 'data/equal_split_word/title/fine700.txt,data/equal_split_word/title/coarse1412.txt'
@@ -87,7 +96,7 @@ if FREEZE:
     # 		print(name,param.size())
     
 # optimizer 
-optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5)
+optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
 # loss
 loss_fn = torch.nn.BCEWithLogitsLoss()
@@ -124,7 +133,8 @@ for epoch in range(max_epoch):
 
     for i, batch in enumerate(train_dataloader):
         optimizer.zero_grad()
-        
+        if LR_SCHED:
+            lr_now = adjust_learning_rate(optimizer, max_epoch, epoch+1, warmup_epochs, lr, min_lr)
         images, splits, labels = batch 
         
         images = images.cuda()

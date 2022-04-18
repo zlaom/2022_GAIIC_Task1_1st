@@ -36,7 +36,7 @@ vocab_file = 'dataset/vocab/vocab.txt'
 attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
 
 
-# dataset 自监督预训练任务，没有验证集
+# dataset 
 class SplitDataset(Dataset):
     def __init__(self, input_filename, vocab_dict, attr_dict_file):
         with open(attr_dict_file, 'r') as f:

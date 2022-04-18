@@ -10,14 +10,14 @@ from model.bert.bertconfig import BertConfig
 from model.fusemodel import FuseModel
 
 
-gpus = '4'
+gpus = '7'
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 split_layers = 0
-fuse_layers = 6
-n_img_expand = 2
+fuse_layers = 10
+n_img_expand = 6
 
-ckpt_path = 'output/split_finetune/clsmatch/keyattrreplace/0l6lexp2/0.9351.pth'
+ckpt_path = 'output/split_finetune/clsmatch/fusereplace/0l10lexp6/0.9394.pth'
 
 vocab_file = 'dataset/vocab/vocab.txt'
 attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'

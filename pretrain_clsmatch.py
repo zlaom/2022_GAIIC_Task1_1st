@@ -8,8 +8,10 @@ from tqdm import tqdm
 from model.bert.bertconfig import BertConfig
 from model.fusemodel import FuseModel
 
-gpus = '5'
-batch_size = 128
+from utils.lr_sched import adjust_learning_rate
+
+gpus = '6'
+batch_size = 64
 max_epoch = 300
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
@@ -17,10 +19,17 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = 'output/split_pretrain/clsmatch/fusereplace/0l6lexp6/'
+save_dir = 'output/split_pretrain/clsmatch/fuseprobareplace/0l6lexp6_bs64/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
+
+# adjust learning rate
+LR_SCHED = False
+lr = 1e-5
+min_lr = 5e-6
+warmup_epochs = 5
+
 
 
 train_file = 'data/equal_split_word/title/fine40000.txt,data/equal_split_word/coarse89588.txt'
@@ -33,8 +42,8 @@ vocab_file = 'dataset/vocab/vocab.txt'
 attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
 
 # dataset
-from dataset.clsmatch_dataset import KeyattrReplaceDataset, FuseReplaceDataset, cls_collate_fn
-dataset = FuseReplaceDataset
+from dataset.clsmatch_dataset import KeyattrReplaceDataset, FuseReplaceDataset, FuseProbaReplaceDataset, cls_collate_fn
+dataset = FuseProbaReplaceDataset
 collate_fn = cls_collate_fn
 
 # data
@@ -73,7 +82,7 @@ model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expa
 model.cuda()
 
 # optimizer 
-optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5)
+optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
 # loss
 loss_fn = torch.nn.BCEWithLogitsLoss()
@@ -110,7 +119,8 @@ for epoch in range(max_epoch):
 
     for i, batch in enumerate(train_dataloader):
         optimizer.zero_grad()
-        
+        if LR_SCHED:
+            lr_now = adjust_learning_rate(optimizer, max_epoch, epoch+1, warmup_epochs, lr, min_lr)
         images, splits, labels = batch 
         
         images = images.cuda()
@@ -124,7 +134,10 @@ for epoch in range(max_epoch):
             train_acc = correct / total
             correct = 0
             total = 0
-            print('Epoch:[{}|{}], Acc:{:.2f}%'.format(epoch, max_epoch, train_acc*100))
+            if LR_SCHED:
+                print('Epoch:[{}|{}], Acc:{:.2f}%, LR:{:.2e}'.format(epoch, max_epoch, train_acc*100, lr_now))
+            else:
+                print('Epoch:[{}|{}], Acc:{:.2f}%'.format(epoch, max_epoch, train_acc*100))
         proba = torch.sigmoid(logits.cpu())
         proba[proba>0.5] = 1
         proba[proba<=0.5] = 0
