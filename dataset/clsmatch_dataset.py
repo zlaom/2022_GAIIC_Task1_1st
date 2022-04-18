@@ -210,7 +210,7 @@ class ITMDataset(Dataset):
         image = torch.tensor(item['feature'])
         split = item['vocab_split']
         label = item['match']['图文']
-
+        
         return image, split, label
 
 

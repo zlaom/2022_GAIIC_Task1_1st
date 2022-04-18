@@ -33,15 +33,15 @@ class WordReplaceDataset(Dataset):
     
     def __getitem__(self, idx):
         image = torch.tensor(self.items[idx]['feature'])
-        split = self.items[idx]['vocab_split']
-        split = copy.deepcopy(split) # 要做拷贝，否则会改变self.items的值
+        ori_split = self.items[idx]['vocab_split']
+        split = copy.deepcopy(ori_split) # 要做拷贝，否则会改变self.items的值
         
         split_label = torch.ones(20)
         for i, word in enumerate(split):
             if random.random() > 0.5: # 替换
                 new_word = np.random.choice(self.words_list, p=self.proba_list)
-                split[i] = new_word
-                if new_word != word: # 存在new_word和word相同的情况
+                if new_word not in ori_split and new_word not in split: # 修复之前忽略的bug
+                    split[i] = new_word
                     split_label[i] = 0
 
         return image, split, split_label
@@ -86,8 +86,8 @@ class FuseReplaceDataset(Dataset):
     
     def __getitem__(self, idx):
         image = torch.tensor(self.items[idx]['feature'])
-        split = self.items[idx]['vocab_split']
-        split = copy.deepcopy(split) # 要做拷贝，否则会改变self.items的值
+        ori_split = self.items[idx]['vocab_split']
+        split = copy.deepcopy(ori_split) # 要做拷贝，否则会改变self.items的值
         
         split_label = torch.ones(20)
         for i, word in enumerate(split):
@@ -97,8 +97,8 @@ class FuseReplaceDataset(Dataset):
                     split_label[i] = 0
                 else:
                     new_word = np.random.choice(self.words_list, p=self.proba_list)
-                    split[i] = new_word
-                    if new_word != word: # 存在new_word和word相同的情况
+                    if new_word not in ori_split and new_word not in split: # 修复之前忽略的bug
+                        split[i] = new_word
                         split_label[i] = 0
 
         return image, split, split_label

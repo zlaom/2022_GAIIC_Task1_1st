@@ -7,7 +7,7 @@ from model.bert.tokenizer import Tokenizer
 
 from einops import rearrange, repeat
 
-class FuseModel(nn.Module):
+class FuseCrossModel(nn.Module):
     def __init__(self, split_config, fuse_config, cross_config, vocab_file, img_dim=2048, n_img_expand=8):
         super().__init__()
         self.n_img_expand = n_img_expand
@@ -56,7 +56,7 @@ class FuseModel(nn.Module):
                                     token_type_ids=fuse_token_type_ids)[0]
         
         # 构建cross输入
-        image_embeds = fuse_output[:, 1:self.n_img_expand, :]
+        image_embeds = fuse_output[:, 1:self.n_img_expand+1, :]
         split_embeds = fuse_output[:, self.n_img_expand+1:, :]
         image_attention_mask = torch.ones(B, self.n_img_expand, dtype=int).cuda()
         # cross bert 

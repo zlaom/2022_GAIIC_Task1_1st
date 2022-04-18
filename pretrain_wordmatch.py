@@ -1,25 +1,32 @@
 import os
 import torch 
 import json
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 from tqdm import tqdm 
 
 
 from model.bert.bertconfig import BertConfig
 from model.fusemodel import FuseModel
+from model.fusecrossmodel import FuseCrossModel
+from utils.lr_sched import adjust_learning_rate
 
-gpus = '0'
+gpus = '7'
 batch_size = 128
 max_epoch = 300
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 split_layers = 0
 fuse_layers = 6
-n_img_expand = 2
+n_img_expand = 6
+cross_layers = 1
 
-lr = 1e-5
+# adjust learning rate
+LR_SCHED = True
+lr = 4e-5
+min_lr = 5e-6
+warmup_epochs = 5
 
-save_dir = 'output/title_pretrain/word_match/0l6l2exp/'
+save_dir = 'output/split_pretrain/wordmatch/fusereplace/0l6lexp6_lrsched4e-5_5e-6/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
@@ -40,11 +47,13 @@ with open(vocab_dict_file, 'r') as f:
 
 # dataset
 from dataset.wordmatch_dataset import WordReplaceDataset, FuseReplaceDataset, word_collate_fn
-dataset = WordReplaceDataset 
+dataset = FuseReplaceDataset 
 collate_fn = word_collate_fn
 
-train_dataset = dataset(train_file, vocab_dict)
-val_dataset = dataset(val_file, vocab_dict)
+train_dataset = dataset(train_file, vocab_dict, attr_dict_file)
+val_dataset = dataset(val_file, vocab_dict, attr_dict_file)
+# train_dataset = dataset(train_file, vocab_dict)
+# val_dataset = dataset(val_file, vocab_dict)
 train_dataloader = DataLoader(
         train_dataset,
         batch_size=batch_size,
@@ -71,6 +80,12 @@ fuse_config = BertConfig(num_hidden_layers=fuse_layers)
 model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
 model.cuda()
 
+# fuse cross model
+# split_config = BertConfig(num_hidden_layers=split_layers)
+# fuse_config = BertConfig(num_hidden_layers=fuse_layers)
+# cross_config = BertConfig(num_hidden_layers=cross_layers)
+# model = FuseCrossModel(split_config, fuse_config, cross_config, vocab_file, n_img_expand=n_img_expand)
+# model.cuda()
 
 # optimizer 
 optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
@@ -118,9 +133,11 @@ for epoch in range(max_epoch):
 
     for i, batch in enumerate(train_dataloader):
         optimizer.zero_grad()
+        if LR_SCHED:
+            lr_now = adjust_learning_rate(optimizer, max_epoch, epoch+1, warmup_epochs, lr, min_lr)
         
         images, splits, labels = batch 
-        
+
         images = images.cuda()
         
         logits, mask = model(images, splits, word_match=True)
@@ -138,7 +155,10 @@ for epoch in range(max_epoch):
             train_acc = correct / total
             correct = 0
             total = 0
-            print('Epoch:[{}|{}], Acc:{:.2f}%'.format(epoch, max_epoch, train_acc*100))
+            if LR_SCHED:
+                print('Epoch:[{}|{}], Acc:{:.2f}%, LR:{:.2e}'.format(epoch, max_epoch, train_acc*100, lr_now))
+            else:
+                print('Epoch:[{}|{}], Acc:{:.2f}%'.format(epoch, max_epoch, train_acc*100))
         proba = torch.sigmoid(logits.cpu())
         proba[proba>0.5] = 1
         proba[proba<=0.5] = 0
