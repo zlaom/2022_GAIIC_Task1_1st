@@ -13,13 +13,13 @@ from model.fusemodel import FuseModel
 
 from utils.lr_sched import adjust_learning_rate
 
-gpus = '4'
+gpus = '7'
 batch_size = 128
 max_epoch = 100
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 split_layers = 0
-fuse_layers = 10
+fuse_layers = 6
 n_img_expand = 6
 
 
@@ -29,30 +29,31 @@ lr = 1e-5
 min_lr = 1e-6
 warmup_epochs = 0
 
-save_dir = 'output/split_finetune/title/clsmatch/fusereplace/0l10lexp6_lr/'
+save_dir = 'output/split_finetune/title/clsmatch/augment/attrreplace/0l6lexp6/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
 
 FREEZE = False
 LOAD_CKPT = True
-ckpt_file = 'output/split_pretrain/clsmatch/fusereplace/0l10lexp6_bs64/0.9205.pth'
+ckpt_file = 'output/split_pretrain/clsmatch/fusereplace/0l6lexp6/0.9100.pth'
 
-train_file = 'data/equal_split_word/title/fine9000.txt,data/equal_split_word/title/coarse9000.txt'
+train_file = 'data/equal_split_word/title/fine20000.txt,data/equal_split_word/title/coarse9000.txt'
 val_file = 'data/equal_split_word/title/fine700.txt,data/equal_split_word/title/coarse1412.txt'
 # train_file = 'data/equal_split_word/fine45000.txt'
-# vocab_dict_file = 'dataset/vocab/vocab_dict.json'
+vocab_dict_file = 'dataset/vocab/vocab_dict.json'
 vocab_file = 'dataset/vocab/vocab.txt'
 attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
 
 
 # dataset 
-from dataset.clsmatch_dataset import ITMDataset, cls_collate_fn
-dataset = ITMDataset
+from dataset.clsmatch_dataset import ITMDataset, ITMAugDataset, cls_collate_fn
+dataset = ITMAugDataset
 collate_fn = cls_collate_fn
 
-train_dataset = dataset(train_file)
-val_dataset = dataset(val_file)
+train_dataset = dataset(train_file, attr_dict_file, vocab_dict_file)
+# train_dataset = dataset(train_file)
+val_dataset = ITMDataset(val_file)
 
 train_dataloader = DataLoader(
         train_dataset,

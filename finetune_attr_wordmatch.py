@@ -9,7 +9,7 @@ from model.fusemodel import FuseModel
 from model.fusecrossmodel import FuseCrossModel
 from utils.lr_sched import adjust_learning_rate
 
-gpus = '7'
+gpus = '4'
 batch_size = 128
 max_epoch = 100
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
@@ -19,13 +19,13 @@ fuse_layers = 6
 n_img_expand = 6
 cross_layers = 1
 
-save_dir = 'output/split_finetune/attr/fusereplace/0l6lexp6/'
+save_dir = 'output/split_finetune/attr/fuseprobareplace/0l6l1lexp6/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
 
 LOAD_CKPT = True
-ckpt_file = 'output/split_pretrain/wordmatch/fusereplace/0l6lexp6/0.9322.pth'
+ckpt_file = 'output/split_pretrain/wordmatch/fuseprobareplace/0l6l1lexp6/0.9284.pth'
 
 # adjust learning rate
 LR_SCHED = False
@@ -40,16 +40,20 @@ val_file = 'data/equal_split_word/fine5000.txt'
 # train_file = 'data/equal_split_word/fine45000.txt'
 # vocab_dict_file = 'dataset/vocab/vocab_dict.json'
 vocab_file = 'dataset/vocab/vocab.txt'
+vocab_dict_file = 'dataset/vocab/vocab_dict.json'
 attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
 
 
 # data
-from dataset.keyattrmatch_dataset import AttrMatchDataset, attrmatch_collate_fn
-dataset = AttrMatchDataset
+from dataset.keyattrmatch_dataset import AttrMatchDataset, AttrMatchProbaDataset, attrmatch_collate_fn
+dataset = AttrMatchProbaDataset
 collate_fn = attrmatch_collate_fn
 
-train_dataset = dataset(train_file, attr_dict_file)
-val_dataset = dataset(val_file, attr_dict_file)
+train_dataset = dataset(train_file, attr_dict_file, vocab_dict_file)
+val_dataset = dataset(val_file, attr_dict_file, vocab_dict_file)
+
+# train_dataset = dataset(train_file, attr_dict_file)
+# val_dataset = dataset(val_file, attr_dict_file)
 
 train_dataloader = DataLoader(
         train_dataset,
@@ -71,21 +75,21 @@ val_dataloader = DataLoader(
     )
 
 # model
-split_config = BertConfig(num_hidden_layers=split_layers)
-fuse_config = BertConfig(num_hidden_layers=fuse_layers)
-model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
-if LOAD_CKPT:
-    model.load_state_dict(torch.load(ckpt_file))
-model.cuda()
-
-# fuse cross model
 # split_config = BertConfig(num_hidden_layers=split_layers)
 # fuse_config = BertConfig(num_hidden_layers=fuse_layers)
-# cross_config = BertConfig(num_hidden_layers=cross_layers)
-# model = FuseCrossModel(split_config, fuse_config, cross_config, vocab_file, n_img_expand=n_img_expand)
+# model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
 # if LOAD_CKPT:
 #     model.load_state_dict(torch.load(ckpt_file))
 # model.cuda()
+
+# fuse cross model
+split_config = BertConfig(num_hidden_layers=split_layers)
+fuse_config = BertConfig(num_hidden_layers=fuse_layers)
+cross_config = BertConfig(num_hidden_layers=cross_layers)
+model = FuseCrossModel(split_config, fuse_config, cross_config, vocab_file, n_img_expand=n_img_expand)
+if LOAD_CKPT:
+    model.load_state_dict(torch.load(ckpt_file))
+model.cuda()
 
 
 # optimizer 

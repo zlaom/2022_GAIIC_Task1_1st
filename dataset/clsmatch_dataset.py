@@ -214,7 +214,67 @@ class ITMDataset(Dataset):
         return image, split, label
 
 
+# ITM(image-text matching) finetune with augmentation
+class ITMAugDataset(Dataset):
+    def __init__(self, input_filename, attr_dict_file, vocab_dict_file):
+        with open(attr_dict_file, 'r') as f:
+            attr_dict = json.load(f)
+        with open(vocab_dict_file, 'r') as f:
+            vocab_dict = json.load(f)
+        self.get_negative_dict(attr_dict)
+        # 提取数据
+        self.items = []
+        for file in input_filename.split(','):
+            with open(file, 'r') as f:
+                for line in tqdm(f):
+                    item = json.loads(line)
+                    self.items.append(item)
+                
+    def __len__(self):
+        return len(self.items)
+    
+    def get_negative_dict(self, attr_dict):
+        all_attr = []
+        negative_dict = {}
+        for query, attr_list in attr_dict.items():
+            all_attr = all_attr + attr_list
+            for attr in attr_list:
+                l = attr_list.copy()
+                l.remove(attr)
+                negative_dict[attr] = l
+        self.negative_dict = negative_dict
+        self.all_attr = all_attr 
 
+    def __getitem__(self, idx):
+        item = self.items[idx]
+        image = torch.tensor(item['feature'])
+        split = item['vocab_split']
+        split = copy.deepcopy(split) # 要做拷贝，否则会改变self.items的值
+        label = item['match']['图文']
+        
+        if label == 1 and random.random() > 0.5: # 正样本以一定概率转化为负样本
+            # roll点，决定用哪种生成方式
+            r = random.random()
+            if r < 0:
+                # 属性替换， 每个属性都有一定的概率被替换
+                key_attr = item['key_attr']
+                for query, attr in key_attr.items():
+                    attr_index = split.index(attr) # 先找到属性的位置
+                    if random.random() > 0.5:
+                        split[attr_index] = np.random.choice(self.negative_dict[attr])
+                        label = 0
+            else:
+                # 属性添加，添加一个随机属性
+                new_attr = np.random.choice(self.all_attr) 
+                if new_attr not in split:
+                    split = split + [new_attr]
+                    label = 0
+                
+                # 男女，男女士，男女装替换
+                
+        return image, split, label
+    
+    
 def cls_collate_fn(batch):
     tensors = []
     splits = []

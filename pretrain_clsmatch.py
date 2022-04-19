@@ -10,7 +10,7 @@ from model.fusemodel import FuseModel
 
 from utils.lr_sched import adjust_learning_rate
 
-gpus = '5'
+gpus = '4'
 batch_size = 128
 max_epoch = 300
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
@@ -19,19 +19,21 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = 'output/split_pretrain/clsmatch/fusereplace/0l6lexp6/'
+save_dir = 'output/split_pretrain/clsmatch/fusereplace/0l6lexp6_lrsched/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
 
 # adjust learning rate
-LR_SCHED = False
-lr = 1e-5
+LR_SCHED = True
+lr = 4e-5
 min_lr = 5e-6
 warmup_epochs = 5
 
+LOAD_CKPT = False
+ckpt_file = 'output/split_pretrain/wordmatch/wordreplace/0l6lexp6/0.9270.pth'
 
-
+# train_file = 'data/equal_split_word/coarse89588.txt'
 train_file = 'data/equal_split_word/title/fine40000.txt,data/equal_split_word/coarse89588.txt'
 # train_file = 'data/equal_split_word/title/fine40000.txt'
 val_file = 'data/equal_split_word/title/fine700.txt,data/equal_split_word/title/coarse1412.txt'
@@ -79,6 +81,8 @@ val_dataloader = DataLoader(
 split_config = BertConfig(num_hidden_layers=split_layers)
 fuse_config = BertConfig(num_hidden_layers=fuse_layers)
 model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
+if LOAD_CKPT:
+    model.load_state_dict(torch.load(ckpt_file))
 model.cuda()
 
 # optimizer 
