@@ -1,28 +1,31 @@
 import os
 import torch 
-import json
 import numpy as np 
 from torch.utils.data import DataLoader
 from tqdm import tqdm 
 
 from model.bert.bertconfig import BertConfig
 from model.fusemodel import FuseModel
-
+from model.fusecrossmodel import FuseCrossModel
 from utils.lr_sched import adjust_learning_rate
 
-gpus = '5'
+gpus = '7'
 batch_size = 128
-max_epoch = 300
+max_epoch = 100
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
+cross_layers = 1
 
-save_dir = 'output/split_pretrain/clsmatch/fusereplace/0l6lexp6/'
+save_dir = 'output/split_finetune/attr/fusereplace/0l6lexp6/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
+
+LOAD_CKPT = True
+ckpt_file = 'output/split_pretrain/wordmatch/fusereplace/0l6lexp6/0.9322.pth'
 
 # adjust learning rate
 LR_SCHED = False
@@ -31,29 +34,22 @@ min_lr = 5e-6
 warmup_epochs = 5
 
 
-
-train_file = 'data/equal_split_word/title/fine40000.txt,data/equal_split_word/coarse89588.txt'
-# train_file = 'data/equal_split_word/title/fine40000.txt'
-val_file = 'data/equal_split_word/title/fine700.txt,data/equal_split_word/title/coarse1412.txt'
-# val_file = 'data/equal_split_word/title/fine9000.txt'
+train_file = 'data/equal_split_word/fine45000.txt,data/equal_split_word/coarse89588.txt'
 # train_file = 'data/equal_split_word/fine45000.txt'
-vocab_dict_file = 'dataset/vocab/vocab_dict.json'
+val_file = 'data/equal_split_word/fine5000.txt'
+# train_file = 'data/equal_split_word/fine45000.txt'
+# vocab_dict_file = 'dataset/vocab/vocab_dict.json'
 vocab_file = 'dataset/vocab/vocab.txt'
 attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
 
-# dataset
-from dataset.clsmatch_dataset import KeyattrReplaceDataset, FuseReplaceDataset, FuseProbaReplaceDataset, cls_collate_fn
-dataset = FuseReplaceDataset
-collate_fn = cls_collate_fn
 
 # data
-with open(vocab_dict_file, 'r') as f:
-    vocab_dict = json.load(f)
+from dataset.keyattrmatch_dataset import AttrMatchDataset, attrmatch_collate_fn
+dataset = AttrMatchDataset
+collate_fn = attrmatch_collate_fn
 
-# train_dataset = dataset(train_file, attr_dict_file, is_train=True)
-# val_dataset = dataset(val_file, attr_dict_file, is_train=False)
-train_dataset = dataset(train_file, attr_dict_file, vocab_dict, is_train=True)
-val_dataset = dataset(val_file, attr_dict_file, vocab_dict, is_train=False)
+train_dataset = dataset(train_file, attr_dict_file)
+val_dataset = dataset(val_file, attr_dict_file)
 
 train_dataloader = DataLoader(
         train_dataset,
@@ -74,12 +70,23 @@ val_dataloader = DataLoader(
         collate_fn=collate_fn,
     )
 
-
 # model
 split_config = BertConfig(num_hidden_layers=split_layers)
 fuse_config = BertConfig(num_hidden_layers=fuse_layers)
 model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
+if LOAD_CKPT:
+    model.load_state_dict(torch.load(ckpt_file))
 model.cuda()
+
+# fuse cross model
+# split_config = BertConfig(num_hidden_layers=split_layers)
+# fuse_config = BertConfig(num_hidden_layers=fuse_layers)
+# cross_config = BertConfig(num_hidden_layers=cross_layers)
+# model = FuseCrossModel(split_config, fuse_config, cross_config, vocab_file, n_img_expand=n_img_expand)
+# if LOAD_CKPT:
+#     model.load_state_dict(torch.load(ckpt_file))
+# model.cuda()
+
 
 # optimizer 
 optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
@@ -94,10 +101,20 @@ def evaluate(model, val_dataloader):
     correct = 0
     total = 0
     for batch in tqdm(val_dataloader):
-        images, splits, labels = batch 
+        images, splits, labels, attr_mask = batch 
         images = images.cuda()
-        logits = model(images, splits)
-        logits = logits.squeeze(1).cpu()
+        logits, mask = model(images, splits, word_match=True)
+        logits = logits.squeeze(2).cpu()
+        
+        _, W = logits.shape
+        labels = labels[:, :W].float()
+        attr_mask = attr_mask[:, :W].float()
+        
+        mask = mask.to(torch.bool)
+        attr_mask = attr_mask.to(torch.bool)
+        attr_mask = attr_mask[mask]
+        logits = logits[mask][attr_mask]
+        labels = labels[mask][attr_mask]
         
         logits = torch.sigmoid(logits)
         logits[logits>0.5] = 1
@@ -121,13 +138,23 @@ for epoch in range(max_epoch):
         optimizer.zero_grad()
         if LR_SCHED:
             lr_now = adjust_learning_rate(optimizer, max_epoch, epoch+1, warmup_epochs, lr, min_lr)
-        images, splits, labels = batch 
+            
+        images, splits, labels, attr_mask = batch 
         
         images = images.cuda()
-        labels = labels.float().cuda()
         
-        logits = model(images, splits)
-        logits = logits.squeeze(1)
+        logits, mask = model(images, splits, word_match=True)
+        logits = logits.squeeze(2)
+        
+        _, W = logits.shape
+        labels = labels[:, :W].float().cuda()
+        attr_mask = attr_mask[:, :W].float().cuda()
+        
+        mask = mask.to(torch.bool)
+        attr_mask = attr_mask.to(torch.bool)
+        attr_mask = attr_mask[mask]
+        logits = logits[mask][attr_mask]
+        labels = labels[mask][attr_mask]
 
         # train acc
         if (i+1)%200 == 0:

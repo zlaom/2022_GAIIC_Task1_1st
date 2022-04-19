@@ -21,12 +21,12 @@ n_img_expand = 6
 cross_layers = 1
 
 # adjust learning rate
-LR_SCHED = True
-lr = 4e-5
+LR_SCHED = False
+lr = 1e-5
 min_lr = 5e-6
 warmup_epochs = 5
 
-save_dir = 'output/split_pretrain/wordmatch/fusereplace/0l6lexp6_lrsched4e-5_5e-6/'
+save_dir = 'output/split_pretrain/wordmatch/fuseprobareplace/0l6l1lexp6/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
@@ -46,8 +46,8 @@ with open(vocab_dict_file, 'r') as f:
 
 
 # dataset
-from dataset.wordmatch_dataset import WordReplaceDataset, FuseReplaceDataset, word_collate_fn
-dataset = FuseReplaceDataset 
+from dataset.wordmatch_dataset import WordReplaceDataset, FuseReplaceDataset, FuseProbaReplaceDataset, word_collate_fn
+dataset = FuseProbaReplaceDataset 
 collate_fn = word_collate_fn
 
 train_dataset = dataset(train_file, vocab_dict, attr_dict_file)
@@ -75,17 +75,17 @@ val_dataloader = DataLoader(
 
 
 # model
-split_config = BertConfig(num_hidden_layers=split_layers)
-fuse_config = BertConfig(num_hidden_layers=fuse_layers)
-model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
-model.cuda()
-
-# fuse cross model
 # split_config = BertConfig(num_hidden_layers=split_layers)
 # fuse_config = BertConfig(num_hidden_layers=fuse_layers)
-# cross_config = BertConfig(num_hidden_layers=cross_layers)
-# model = FuseCrossModel(split_config, fuse_config, cross_config, vocab_file, n_img_expand=n_img_expand)
+# model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
 # model.cuda()
+
+# fuse cross model
+split_config = BertConfig(num_hidden_layers=split_layers)
+fuse_config = BertConfig(num_hidden_layers=fuse_layers)
+cross_config = BertConfig(num_hidden_layers=cross_layers)
+model = FuseCrossModel(split_config, fuse_config, cross_config, vocab_file, n_img_expand=n_img_expand)
+model.cuda()
 
 # optimizer 
 optimizer = torch.optim.AdamW(model.parameters(), lr=lr)

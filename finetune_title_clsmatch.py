@@ -29,7 +29,7 @@ lr = 1e-5
 min_lr = 1e-6
 warmup_epochs = 0
 
-save_dir = 'output/split_finetune/clsmatch/fusereplace/0l10lexp6_lr/'
+save_dir = 'output/split_finetune/title/clsmatch/fusereplace/0l10lexp6_lr/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
