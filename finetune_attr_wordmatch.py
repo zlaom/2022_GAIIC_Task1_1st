@@ -6,10 +6,16 @@ from tqdm import tqdm
 
 from model.bert.bertconfig import BertConfig
 from model.fusemodel import FuseModel
-from model.fusecrossmodel import FuseCrossModel
+from model.fusecrossmodel import FuseCrossModel, FuseCrossModelWithFusehead
 from utils.lr_sched import adjust_learning_rate
 
-gpus = '4'
+# fix the seed for reproducibility
+seed = 0
+torch.manual_seed(seed)
+np.random.seed(seed)
+torch.backends.cudnn.benchmark = True
+
+gpus = '5'
 batch_size = 128
 max_epoch = 100
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
@@ -19,13 +25,14 @@ fuse_layers = 6
 n_img_expand = 6
 cross_layers = 1
 
-save_dir = 'output/split_finetune/attr/fuseprobareplace/0l6l1lexp6/'
+# save_dir = 'output/split_finetune/attr/fusereplace_fusehead/0l6l1lexp6/'
+save_dir = 'output/split_finetune/attr/final_wordreplace/0l6l1lexp6/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
 
 LOAD_CKPT = True
-ckpt_file = 'output/split_pretrain/wordmatch/fuseprobareplace/0l6l1lexp6/0.9284.pth'
+ckpt_file = 'output/split_pretrain/final_wordmatch/wordreplace/0l6l1lexp6/0.9218.pth'
 
 # adjust learning rate
 LR_SCHED = False
@@ -34,9 +41,9 @@ min_lr = 5e-6
 warmup_epochs = 5
 
 
-train_file = 'data/equal_split_word/fine45000.txt,data/equal_split_word/coarse89588.txt'
+train_file = 'data/equal_split_word/fine45000.txt,data/equal_split_word/title/coarse85000.txt'
 # train_file = 'data/equal_split_word/fine45000.txt'
-val_file = 'data/equal_split_word/fine5000.txt'
+val_file = 'data/equal_split_word/fine5000.txt,data/equal_split_word/title/coarse4588.txt'
 # train_file = 'data/equal_split_word/fine45000.txt'
 # vocab_dict_file = 'dataset/vocab/vocab_dict.json'
 vocab_file = 'dataset/vocab/vocab.txt'
@@ -46,14 +53,14 @@ attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
 
 # data
 from dataset.keyattrmatch_dataset import AttrMatchDataset, AttrMatchProbaDataset, attrmatch_collate_fn
-dataset = AttrMatchProbaDataset
+dataset = AttrMatchDataset
 collate_fn = attrmatch_collate_fn
 
-train_dataset = dataset(train_file, attr_dict_file, vocab_dict_file)
-val_dataset = dataset(val_file, attr_dict_file, vocab_dict_file)
+# train_dataset = dataset(train_file, attr_dict_file, vocab_dict_file)
+# val_dataset = dataset(val_file, attr_dict_file, vocab_dict_file)
 
-# train_dataset = dataset(train_file, attr_dict_file)
-# val_dataset = dataset(val_file, attr_dict_file)
+train_dataset = dataset(train_file, attr_dict_file)
+val_dataset = dataset(val_file, attr_dict_file)
 
 train_dataloader = DataLoader(
         train_dataset,
@@ -91,6 +98,14 @@ if LOAD_CKPT:
     model.load_state_dict(torch.load(ckpt_file))
 model.cuda()
 
+# fuse cross model with fuse head
+# split_config = BertConfig(num_hidden_layers=split_layers)
+# fuse_config = BertConfig(num_hidden_layers=fuse_layers)
+# cross_config = BertConfig(num_hidden_layers=cross_layers)
+# model = FuseCrossModelWithFusehead(split_config, fuse_config, cross_config, vocab_file, n_img_expand=n_img_expand)
+# if LOAD_CKPT:
+#     model.load_state_dict(torch.load(ckpt_file), strict=False)
+# model.cuda()
 
 # optimizer 
 optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
@@ -169,6 +184,7 @@ for epoch in range(max_epoch):
                 print('Epoch:[{}|{}], Acc:{:.2f}%, LR:{:.2e}'.format(epoch, max_epoch, train_acc*100, lr_now))
             else:
                 print('Epoch:[{}|{}], Acc:{:.2f}%'.format(epoch, max_epoch, train_acc*100))
+                            
         proba = torch.sigmoid(logits.cpu())
         proba[proba>0.5] = 1
         proba[proba<=0.5] = 0

@@ -13,7 +13,13 @@ from model.fusemodel import FuseModel
 
 from utils.lr_sched import adjust_learning_rate
 
-gpus = '4'
+# fix the seed for reproducibility
+seed = 0
+torch.manual_seed(seed)
+np.random.seed(seed)
+torch.backends.cudnn.benchmark = True
+
+gpus = '3'
 batch_size = 128
 max_epoch = 100
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
@@ -29,14 +35,14 @@ lr = 1e-5
 min_lr = 1e-6
 warmup_epochs = 0
 
-save_dir = 'output/split_finetune/title/clsmatch/fuseprobareplace/0l6lexp6/'
+save_dir = 'output/split_finetune/title/clsmatch/fusereplace/0l6lexp6_old0.9176/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
 
 FREEZE = False
 LOAD_CKPT = True
-ckpt_file = 'output/split_pretrain/clsmatch/fuseprobareplace/0l6lexp6_bs64/0.9176.pth'
+ckpt_file = 'output/split_pretrain/old_data/clsmatch/fusereplace/0l6lexp6_bs64lrsched/0.9176.pth'
 
 train_file = 'data/old_data/equal_split_word/title/fine9000.txt,data/equal_split_word/title/coarse9000.txt'
 val_file = 'data/old_data/equal_split_word/title/fine700.txt,data/equal_split_word/title/coarse1412.txt'

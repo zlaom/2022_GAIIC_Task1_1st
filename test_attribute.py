@@ -11,8 +11,15 @@ from model.bert.bertconfig import BertConfig
 from model.splitmodel import PretrainSplitBert
 from model.crossmodel import PretrainCrossModel
 from model.fusemodel import FuseModel
+from model.fusecrossmodel import FuseCrossModel, FuseCrossModelWithFusehead
 
-gpus = '0'
+# fix the seed for reproducibility
+seed = 0
+torch.manual_seed(seed)
+np.random.seed(seed)
+torch.backends.cudnn.benchmark = True
+
+gpus = '4'
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 vocab_file = 'dataset/vocab/vocab.txt'
@@ -23,7 +30,7 @@ out_file = "pred_attr.txt"
 with open(attr_dict_file, 'r') as f:
     attr_dict = json.load(f)
 
-ckpt_path = 'output/attr_finetune/fusematch/0l6l2exp/0.9418.pth'
+ckpt_path = 'output/split_finetune/attr/final_bert/0l12lexp6/0.9356.pth'
 
 # fuse model
 # num_hidden_layers = 6
@@ -48,14 +55,31 @@ ckpt_path = 'output/attr_finetune/fusematch/0l6l2exp/0.9418.pth'
 
 # fuse model 
 split_layers = 0
-fuse_layers = 6
-n_img_expand = 2
+fuse_layers = 12
+n_img_expand = 6
 
 split_config = BertConfig(num_hidden_layers=split_layers)
 fuse_config = BertConfig(num_hidden_layers=fuse_layers)
 model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
 model.load_state_dict(torch.load(ckpt_path))
 model.cuda()
+
+# fuse cross model
+# split_config = BertConfig(num_hidden_layers=split_layers)
+# fuse_config = BertConfig(num_hidden_layers=fuse_layers)
+# cross_config = BertConfig(num_hidden_layers=cross_layers)
+# model = FuseCrossModel(split_config, fuse_config, cross_config, vocab_file, n_img_expand=n_img_expand)
+# model.load_state_dict(torch.load(ckpt_path))
+# model.cuda()
+
+# fuse cross model with fuse head
+# split_config = BertConfig(num_hidden_layers=split_layers)
+# fuse_config = BertConfig(num_hidden_layers=fuse_layers)
+# cross_config = BertConfig(num_hidden_layers=cross_layers)
+# model = FuseCrossModelWithFusehead(split_config, fuse_config, cross_config, vocab_file, n_img_expand=n_img_expand)
+# model.load_state_dict(torch.load(ckpt_path))
+# model.cuda()
+
 
 # test
 model.eval()

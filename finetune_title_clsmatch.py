@@ -1,23 +1,25 @@
 import os
-import itertools
 import torch 
-import json
 import numpy as np 
-import random 
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 from tqdm import tqdm 
-import copy
 
 from model.bert.bertconfig import BertConfig
 from model.fusemodel import FuseModel
 
 from utils.lr_sched import adjust_learning_rate
 
-gpus = '7'
-batch_size = 128
-max_epoch = 100
-os.environ['CUDA_VISIBLE_DEVICES'] = gpus
+# fix the seed for reproducibility
+seed = 0
+torch.manual_seed(seed)
+np.random.seed(seed)
+torch.backends.cudnn.benchmark = True
 
+gpus = '4'
+batch_size = 128
+max_epoch = 50
+os.environ['CUDA_VISIBLE_DEVICES'] = gpus
+    
 split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
@@ -27,20 +29,19 @@ n_img_expand = 6
 LR_SCHED = False
 lr = 1e-5
 min_lr = 1e-6
-warmup_epochs = 0
+warmup_epochs = 5
 
-save_dir = 'output/split_finetune/title/clsmatch/augment/attrreplace/0l6lexp6/'
+save_dir = 'output/split_finetune/title/clsmatch/data_amount/0l6lexp6_0.6_9000/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
 
 FREEZE = False
 LOAD_CKPT = True
-ckpt_file = 'output/split_pretrain/clsmatch/fusereplace/0l6lexp6/0.9100.pth'
+ckpt_file = 'output/split_pretrain/clsmatch/fusereplace/0l6lexp6_0.6/0.9181.pth'
 
-train_file = 'data/equal_split_word/title/fine20000.txt,data/equal_split_word/title/coarse9000.txt'
+train_file = 'data/equal_split_word/title/fine9000.txt,data/equal_split_word/title/coarse9000.txt'
 val_file = 'data/equal_split_word/title/fine700.txt,data/equal_split_word/title/coarse1412.txt'
-# train_file = 'data/equal_split_word/fine45000.txt'
 vocab_dict_file = 'dataset/vocab/vocab_dict.json'
 vocab_file = 'dataset/vocab/vocab.txt'
 attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
@@ -48,11 +49,11 @@ attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
 
 # dataset 
 from dataset.clsmatch_dataset import ITMDataset, ITMAugDataset, cls_collate_fn
-dataset = ITMAugDataset
+dataset = ITMDataset
 collate_fn = cls_collate_fn
 
-train_dataset = dataset(train_file, attr_dict_file, vocab_dict_file)
-# train_dataset = dataset(train_file)
+# train_dataset = dataset(train_file, attr_dict_file, vocab_dict_file)
+train_dataset = dataset(train_file)
 val_dataset = ITMDataset(val_file)
 
 train_dataloader = DataLoader(

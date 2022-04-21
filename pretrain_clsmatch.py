@@ -10,7 +10,13 @@ from model.fusemodel import FuseModel
 
 from utils.lr_sched import adjust_learning_rate
 
-gpus = '4'
+# fix the seed for reproducibility
+seed = 0
+torch.manual_seed(seed)
+np.random.seed(seed)
+torch.backends.cudnn.benchmark = True
+
+gpus = '5'
 batch_size = 128
 max_epoch = 300
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
@@ -19,7 +25,7 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = 'output/split_pretrain/clsmatch/fusereplace/0l6lexp6_lrsched/'
+save_dir = 'output/split_pretrain/clsmatch_final/fusereplace_halfrandomkeyattr/0l6lexp6_0.55/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''

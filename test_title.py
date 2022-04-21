@@ -9,6 +9,11 @@ from tqdm import tqdm
 from model.bert.bertconfig import BertConfig
 from model.fusemodel import FuseModel
 
+# fix the seed for reproducibility
+seed = 0
+torch.manual_seed(seed)
+np.random.seed(seed)
+torch.backends.cudnn.benchmark = True
 
 gpus = '7'
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
