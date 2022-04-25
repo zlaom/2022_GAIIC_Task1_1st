@@ -23,9 +23,9 @@ gpus = '4'
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 vocab_file = 'dataset/vocab/vocab.txt'
-test_file = 'data/equal_split_word/test4000.txt'
+test_file = 'data/equal_split_word/test10000.txt'
 attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
-out_file = "pred_attr.txt"
+out_file = "pred_attr_B.txt"
 
 with open(attr_dict_file, 'r') as f:
     attr_dict = json.load(f)

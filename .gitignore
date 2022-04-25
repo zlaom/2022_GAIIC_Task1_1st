@@ -3,3 +3,4 @@ output/
 data/pretrained_model/
 *.txt
 __pycache__
+project/

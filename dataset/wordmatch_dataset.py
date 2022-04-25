@@ -84,6 +84,23 @@ class FuseReplaceDataset(Dataset):
     def __len__(self):
         return len(self.items)
     
+    # def __getitem__(self, idx):
+    #     image = torch.tensor(self.items[idx]['feature'])
+    #     ori_split = self.items[idx]['vocab_split']
+    #     split = copy.deepcopy(ori_split) # 要做拷贝，否则会改变self.items的值
+        
+    #     split_label = torch.ones(20)
+    #     for i, word in enumerate(split):
+    #         if random.random() < 0.5: # 替换
+    #             if word in self.negative_dict:
+    #                 split[i] = random.sample(self.negative_dict[word], 1)[0]
+    #                 split_label[i] = 0
+    #             else:
+    #                 new_word = np.random.choice(self.words_list, p=self.proba_list)
+    #                 if new_word not in ori_split and new_word not in split: # 修复之前忽略的bug
+    #                     split[i] = new_word
+    #                     split_label[i] = 0
+                        
     def __getitem__(self, idx):
         image = torch.tensor(self.items[idx]['feature'])
         ori_split = self.items[idx]['vocab_split']
@@ -91,11 +108,12 @@ class FuseReplaceDataset(Dataset):
         
         split_label = torch.ones(20)
         for i, word in enumerate(split):
-            if random.random() > 0.5: # 替换
-                if word in self.negative_dict:
+            if word in self.negative_dict:
+                if random.random() < 0.5: # 替换
                     split[i] = random.sample(self.negative_dict[word], 1)[0]
                     split_label[i] = 0
-                else:
+            else:
+                 if random.random() < 0.2: # 替换
                     new_word = np.random.choice(self.words_list, p=self.proba_list)
                     if new_word not in ori_split and new_word not in split: # 修复之前忽略的bug
                         split[i] = new_word

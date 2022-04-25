@@ -4,6 +4,8 @@ import json
 from torch.utils.data import DataLoader
 from tqdm import tqdm 
 import numpy as np
+from collections import OrderedDict 
+import transformers 
 
 from model.bert.bertconfig import BertConfig
 from model.fusemodel import FuseModel
@@ -22,7 +24,7 @@ max_epoch = 300
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 split_layers = 0
-fuse_layers = 6
+fuse_layers = 12
 n_img_expand = 6
 cross_layers = 1
 
@@ -32,14 +34,15 @@ lr = 1e-5
 min_lr = 5e-6
 warmup_epochs = 5
 
-save_dir = 'output/split_pretrain/final_wordmatch/fusereplace/0l6l1lexp6/'
+save_dir = 'output/split_pretrain/final_wordmatch_mutual/fusereplace/0l12lexp6/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
 
+LOAD_CKPT = False
 
-train_file = 'data/equal_split_word/fine45000.txt,data/equal_split_word/title/coarse85000.txt'
-val_file = 'data/equal_split_word/fine5000.txt,data/equal_split_word/title/coarse4588.txt'
+train_file = 'data/equal_split_word/attr/fine35000.txt,data/equal_split_word/attr/coarse65000.txt'
+val_file = 'data/equal_split_word/fine5000.txt,data/equal_split_word/attr/coarse4588.txt'
 vocab_dict_file = 'dataset/vocab/vocab_dict.json'
 vocab_file = 'dataset/vocab/vocab.txt'
 attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
@@ -78,17 +81,27 @@ val_dataloader = DataLoader(
 
 
 # model
-# split_config = BertConfig(num_hidden_layers=split_layers)
-# fuse_config = BertConfig(num_hidden_layers=fuse_layers)
-# model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
-# model.cuda()
-
-# fuse cross model
 split_config = BertConfig(num_hidden_layers=split_layers)
 fuse_config = BertConfig(num_hidden_layers=fuse_layers)
-cross_config = BertConfig(num_hidden_layers=cross_layers)
-model = FuseCrossModel(split_config, fuse_config, cross_config, vocab_file, n_img_expand=n_img_expand)
+model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
+if LOAD_CKPT:
+    bert = transformers.BertModel.from_pretrained('hfl/chinese-macbert-base', cache_dir='data/pretrained_model/macbert_base')
+    state_dict = bert.state_dict()
+    names = list(state_dict.keys())
+    new_dict = OrderedDict()
+    for name in names:
+        if name.startswith('encoder.'):
+            new_dict['fusebert.'+name] = state_dict[name]
+    msg = model.load_state_dict(new_dict, strict=False)
+    print(msg)
 model.cuda()
+
+# fuse cross model
+# split_config = BertConfig(num_hidden_layers=split_layers)
+# fuse_config = BertConfig(num_hidden_layers=fuse_layers)
+# cross_config = BertConfig(num_hidden_layers=cross_layers)
+# model = FuseCrossModel(split_config, fuse_config, cross_config, vocab_file, n_img_expand=n_img_expand)
+# model.cuda()
 
 # optimizer 
 optimizer = torch.optim.AdamW(model.parameters(), lr=lr)

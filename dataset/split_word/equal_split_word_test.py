@@ -5,8 +5,8 @@ import json
 ltp_path = '../../data/pretrained_model/ltp_base'
 attr_dict_file = '../../data/equal_processed_data/attr_to_attrvals.json'
 
-file = '../../data/equal_processed_data/test4000.txt'
-save_file = '../../data/split_word/test4000.txt'
+file = '../../data/equal_processed_data/test10000.txt'
+save_file = '../../data/split_word/test10000.txt'
 
 
 ltp = LTP(path=ltp_path) 

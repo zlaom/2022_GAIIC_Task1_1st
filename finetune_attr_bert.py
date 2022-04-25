@@ -28,7 +28,7 @@ n_img_expand = 6
 cross_layers = 1
 
 # save_dir = 'output/split_finetune/attr/fusereplace_fusehead/0l6l1lexp6/'
-save_dir = 'output/split_finetune/attr/final_bert/0l6lexp6_withfusehead/'
+save_dir = 'output/split_finetune/attr/final_bert/0l6lexp6_test/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
@@ -43,9 +43,9 @@ min_lr = 5e-6
 warmup_epochs = 5
 
 
-train_file = 'data/equal_split_word/fine45000.txt,data/equal_split_word/title/coarse85000.txt'
+train_file = 'data/equal_split_word/fine45000.txt,data/equal_split_word/attr/coarse85000.txt'
 # train_file = 'data/equal_split_word/fine45000.txt'
-val_file = 'data/equal_split_word/fine5000.txt,data/equal_split_word/title/coarse4588.txt'
+val_file = 'data/equal_split_word/fine5000.txt,data/equal_split_word/attr/coarse4588.txt'
 # train_file = 'data/equal_split_word/fine45000.txt'
 # vocab_dict_file = 'dataset/vocab/vocab_dict.json'
 vocab_file = 'dataset/vocab/vocab.txt'
@@ -102,7 +102,7 @@ val_dataloader = DataLoader(
 # fuse model with fuse head
 split_config = BertConfig(num_hidden_layers=split_layers)
 fuse_config = BertConfig(num_hidden_layers=fuse_layers)
-model = FuseModelWithFusehead(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
+model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
 if LOAD_CKPT:
     bert = transformers.BertModel.from_pretrained('hfl/chinese-macbert-base', cache_dir='data/pretrained_model/macbert_base')
     state_dict = bert.state_dict()

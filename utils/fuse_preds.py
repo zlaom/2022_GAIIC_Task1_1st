@@ -2,9 +2,9 @@ import json
 from tqdm import tqdm 
 
 # 融合两个单独的文件
-title_file = '../pred_title.txt'
-attr_file = '../pred_attr.txt'
-out_file = '../pred_title_attr.txt'
+title_file = '../pred_title_B_seed4.txt'
+attr_file = '../pred_attr_B.txt'
+out_file = '../pred_title_attr_seed4.txt'
 
 attrs = []
 rets = []

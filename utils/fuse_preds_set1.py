@@ -3,9 +3,9 @@ from tqdm import tqdm
 import copy 
 
 # 融合两个单独的文件
-title_file = '../pred_title.txt'
-attr_file = '../pred_attr.txt'
-out_file = '../pred_title_attr_set1.txt'
+title_file = '../pred_title_B.txt'
+attr_file = '../pred_attr_B.txt'
+out_file = '../pred_title_attr_set1_B.txt'
 
 attrs = []
 rets = []
