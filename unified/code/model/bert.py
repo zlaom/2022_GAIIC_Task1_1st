@@ -12,12 +12,10 @@ class BertModel(nn.Module):
     def __init__(self):
         super().__init__()
         self.bert = transformers.BertModel.from_pretrained(
-            "bert-base-chinese",
-            cache_dir="../data/pretrained_model/bert-base-chinese",
+            "bert-base-chinese"
         )
         self.tokenizer = transformers.BertTokenizer.from_pretrained(
-            "hfl/chinese-macbert-base",
-            cache_dir="../data/pretrained_model/bert-base-chinese",
+            "bert-base-chinese"
         )
         bert_dim = 768
         self.image_encoder = nn.Sequential(
