@@ -159,7 +159,7 @@ for epoch in range(max_epoch):
         max_acc = acc
         # if last_path:
         #     os.remove(last_path)
-        save_path = save_dir + save_name + '{:.4f}'.format(acc)+'.pth'
+        save_path = save_dir + save_name + f'_{epoch}_{acc:.4f}.pth'
         # save_path = save_dir + save_name + '.pth'
         last_path = save_path
         torch.save(model.state_dict(), save_path)

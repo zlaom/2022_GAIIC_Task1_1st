@@ -26,7 +26,7 @@ split_layers = 0
 fuse_layers = 12
 n_img_expand = 6
 
-save_dir = 'data/model_data/attr/'
+save_dir = 'data/model_data/bert_attr/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = 'attr_best_model'
@@ -158,8 +158,8 @@ for epoch in range(max_epoch):
         max_acc = acc
         if last_path:
             os.remove(last_path)
-        # save_path = save_dir + save_name + '{:.4f}'.format(acc)+'.pth'
-        save_path = save_dir + save_name + '.pth'
+        save_path = save_dir + save_name + f'_{epoch}_{acc:.4f}.pth'
+        # save_path = save_dir + save_name + '.pth'
         last_path = save_path
         torch.save(model.state_dict(), save_path)
         
