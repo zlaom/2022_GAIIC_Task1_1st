@@ -1,4 +1,5 @@
 import os
+import random
 import torch 
 import numpy as np 
 from torch.utils.data import DataLoader
@@ -18,15 +19,15 @@ np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
 gpus = args.gpus
-batch_size = 128
-max_epoch = 100
+batch_size = 256
+max_epoch = 200
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 split_layers = 0
 fuse_layers = 12
 n_img_expand = 6
 
-save_dir = 'data/model_data/attr_mlp/'
+save_dir = 'data/model_data/attr_mlp_no_unsimiler_200/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = 'attr_best_model'
@@ -35,8 +36,8 @@ LOAD_CKPT = True
 
 # adjust learning rate
 LR_SCHED = False
-lr = 1e-5
-min_lr = 5e-6
+lr = 1e-4
+min_lr = 5e-5
 warmup_epochs = 5
 
 # data
@@ -90,6 +91,8 @@ loss_fn = torch.nn.BCEWithLogitsLoss()
 # evaluate 
 @torch.no_grad()
 def evaluate(model, val_dataloader):
+    # 重置random种子
+    random.seed(2022)
     model.eval()
     correct = 0
     total = 0

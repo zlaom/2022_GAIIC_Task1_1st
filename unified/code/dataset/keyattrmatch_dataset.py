@@ -146,10 +146,10 @@ class AttrIdMatchDataset(Dataset):
         key_attr = item["key_attr"]
         label = 1
         # 生成负例
-        if random.random() < 0.6:
+        if random.random() < 0.5:
             label = 0
             # 生成易分负例
-            if random.random() < 0.3:
+            if random.random() < 0:
                 sample_attr_list = self.neg_attr_dict[key_attr]["un_similar_attr"]
             # 生成难分负例
             else:

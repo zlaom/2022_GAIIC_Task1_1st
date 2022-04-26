@@ -8,6 +8,7 @@ class ATTR_ID_MLP(nn.Module):
         
         image_dim = 2048
         attr_num = 54
+        self.image_dropout = nn.Dropout(0.5)
         self.image_linear = nn.Sequential(
             nn.Linear(image_dim, image_dim),
             nn.LayerNorm(image_dim)
@@ -44,6 +45,7 @@ class ATTR_ID_MLP(nn.Module):
 
         
         attr_id = self.attr_id_linear(attr_id)
+        image = self.image_dropout(image)
         image = self.image_linear(image)
 
         features = torch.cat((image, attr_id), dim=-1)

@@ -3,6 +3,7 @@ import torch
 import numpy as np 
 from torch.utils.data import DataLoader
 from tqdm import tqdm 
+import random
 
 from utils.lr_sched import adjust_learning_rate
 
@@ -89,6 +90,7 @@ loss_fn = torch.nn.BCEWithLogitsLoss()
 # evaluate 
 @torch.no_grad()
 def evaluate(model, val_dataloader):
+    random.seed(2022)
     model.eval()
     correct = 0
     total = 0
