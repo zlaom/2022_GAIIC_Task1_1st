@@ -26,7 +26,7 @@ split_layers = 0
 fuse_layers = 12
 n_img_expand = 6
 
-save_dir = 'data/model_data/attr/'
+save_dir = 'data/model_data/attr_mlp/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = 'attr_best_model'
@@ -46,15 +46,16 @@ val_file = 'data/tmp_data/equal_processed_data/fine5000.txt,data/tmp_data/equal_
 vocab_file = 'data/tmp_data/vocab/vocab.txt'
 vocab_dict_file = 'data/tmp_data/vocab/vocab_dict.json'
 neg_attr_dict_file = 'data/tmp_data/equal_processed_data/neg_attr.json'
+attr_to_id = 'data/tmp_data/equal_processed_data/attr_to_id.json'
 macbert_base_file = 'data/pretrain_model/macbert_base'
 
 # dataset
-from dataset.keyattrmatch_dataset import TitleCatAttrMatchDataset, title_cat_attrmatch_collate_fn
-dataset = TitleCatAttrMatchDataset
-collate_fn = title_cat_attrmatch_collate_fn
+from dataset.keyattrmatch_dataset import AttrIdMatchDataset, attr_id_match_collate_fn
+dataset = AttrIdMatchDataset
+collate_fn = attr_id_match_collate_fn
 
-train_dataset = dataset(train_file, neg_attr_dict_file)
-val_dataset = dataset(val_file, neg_attr_dict_file)
+train_dataset = dataset(train_file, neg_attr_dict_file, attr_to_id)
+val_dataset = dataset(val_file, neg_attr_dict_file, attr_to_id)
 
 train_dataloader = DataLoader(
         train_dataset,
@@ -76,8 +77,8 @@ val_dataloader = DataLoader(
     )
 
 # fuse model
-from model.bert import BertModel
-model = BertModel()
+from model.attr_mlp import ATTR_ID_MLP
+model = ATTR_ID_MLP()
 model.cuda()
 
 # optimizer 
@@ -93,9 +94,10 @@ def evaluate(model, val_dataloader):
     correct = 0
     total = 0
     for batch in tqdm(val_dataloader):
-        images, titles, labels = batch 
+        images, attr_ids, labels = batch 
         images = images.cuda()
-        logits = model(images, titles)
+        attr_ids = attr_ids.cuda()
+        logits = model(images, attr_ids)
         logits = logits.cpu()
         
         logits = torch.sigmoid(logits)
@@ -121,13 +123,12 @@ for epoch in range(max_epoch):
         if LR_SCHED:
             lr_now = adjust_learning_rate(optimizer, max_epoch, epoch+1, warmup_epochs, lr, min_lr)
             
-        images, titles, labels = batch 
-        
+        images, attr_ids, labels = batch 
         images = images.cuda()
-        
-        logits = model(images, titles)
-        
+        attr_ids = attr_ids.cuda()
         labels = labels.float().cuda()
+        logits = model(images, attr_ids)
+        
 
         # train acc
         if (i+1)%200 == 0:
@@ -156,10 +157,10 @@ for epoch in range(max_epoch):
 
     if acc > max_acc:
         max_acc = acc
-        if last_path:
-            os.remove(last_path)
-        # save_path = save_dir + save_name + '{:.4f}'.format(acc)+'.pth'
-        save_path = save_dir + save_name + '.pth'
+        # if last_path:
+        #     os.remove(last_path)
+        save_path = save_dir + save_name + '{:.4f}'.format(acc)+'.pth'
+        # save_path = save_dir + save_name + '.pth'
         last_path = save_path
         torch.save(model.state_dict(), save_path)
         

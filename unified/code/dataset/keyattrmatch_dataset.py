@@ -1,7 +1,8 @@
 import copy
 from email.mime import image
 import json
-import random 
+import random
+from requests import delete 
 from tqdm import tqdm 
 import torch 
 from torch.utils.data import Dataset
@@ -108,6 +109,58 @@ class TitleCatAttrMatchDataset(Dataset):
             new_attr = random.sample(sample_attr_list, k=1)[0]
             title = title.replace(key_attr, new_attr)
         return image, title, label
+
+#attr id match dataset
+class AttrIdMatchDataset(Dataset):
+    '''generate positive and negative samples for attribute matching finetuning'''
+    def __init__(self, input_filename, neg_attr_dict_file, attr_to_id_file):
+        with open(neg_attr_dict_file, 'r') as f:
+            self.neg_attr_dict = json.load(f)
+
+        with open(attr_to_id_file, 'r') as f:
+            self.attr_to_id = json.load(f)
+        # 提取数据
+        self.items = []
+        i = 0
+        for file in input_filename.split(','):
+            with open(file, 'r') as f:
+                for line in tqdm(f):
+                    item = json.loads(line)
+                    if item['match']['图文']: # 训练集图文必须匹配
+                        if item['key_attr']: # 必须有属性
+                            # 生成所有离散属性
+                            for key, value in item['key_attr'].items():
+                                new_item = copy.deepcopy(item)
+                                new_item['key_attr'] = value
+                                # 删除title节省内存
+                                del  new_item["title"]
+                                self.items.append(new_item)
+                                # i+=1
+                                # if i >500:
+                                #     return
+                
+    def __len__(self):
+        return len(self.items)
+        
+    def __getitem__(self, idx):
+        item = self.items[idx]
+        image = item["feature"]
+        key_attr = item["key_attr"]
+        label = 1
+        # 生成负例
+        if random.random() < 0.6:
+            label = 0
+            # 生成易分负例
+            if random.random() < 0.3:
+                sample_attr_list = self.neg_attr_dict[key_attr]["un_similar_attr"]
+            # 生成难分负例
+            else:
+                sample_attr_list = self.neg_attr_dict[key_attr]["similar_attr"]
+            key_attr = random.sample(sample_attr_list, k=1)[0]
+        
+        key_attr_id = self.attr_to_id[key_attr]
+
+        return image, key_attr_id, label
     
 
 # 属性替换也根据频率决定的比率进行替换
@@ -197,3 +250,16 @@ def title_cat_attrmatch_collate_fn(batch):
     titles = titles
     labels = torch.tensor(labels)
     return images, titles, labels
+
+def attr_id_match_collate_fn(batch):
+    images = []
+    attr_ids = []
+    labels = []
+    for image, attr_id, label in batch:
+        images.append(image)
+        attr_ids.append(attr_id)
+        labels.append(label)
+    images = torch.tensor(images)
+    attr_ids = torch.tensor(attr_ids)
+    labels = torch.tensor(labels)
+    return images, attr_ids, labels

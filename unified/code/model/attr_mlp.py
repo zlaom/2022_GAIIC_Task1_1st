@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
-import torch.functional as F
+import torch.nn.functional as F
 
 class ATTR_ID_MLP(nn.Module):
     def __init__(self, ):
-        super(ATTR_ID_MLP).__init__()
+        super().__init__()
         
         image_dim = 2048
         attr_num = 54
@@ -36,7 +36,7 @@ class ATTR_ID_MLP(nn.Module):
             nn.LayerNorm(256),
             nn.ReLU(),
             nn.Dropout(),
-            nn.Linear(256, 2),
+            nn.Linear(256, 1),
         )
 
 
@@ -54,5 +54,6 @@ class ATTR_ID_MLP(nn.Module):
         fusion_feature = image * image_w + attr_id * attr_id_w
 
         logits = self.itm_head(fusion_feature)
+        logits = torch.squeeze(logits)
 
         return logits
