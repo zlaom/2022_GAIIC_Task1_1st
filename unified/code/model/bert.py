@@ -61,4 +61,5 @@ class BertModel(nn.Module):
         )
         
         x = self.classifier(features)
+        x = torch.squeeze(x)
         return x

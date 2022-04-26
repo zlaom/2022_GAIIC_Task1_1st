@@ -386,3 +386,30 @@ with open(test_file, 'r') as f:
 print(len(rets))
 with open(test_save_file, 'w') as f:
     f.writelines(rets)
+
+
+# 生成attr需要的数据划分
+print('divide data for attr matching training...')
+# [coarse89588 coarse85000 coarse4588]
+
+coarse_file = os.path.join(save_dir, 'coarse89588.txt')
+save_coarse_file_train = os.path.join(save_dir, 'coarse85000.txt')
+save_coarse_file_val = os.path.join(save_dir, 'coarse4588.txt')
+
+rets_train = []
+rets_val = []
+for file in coarse_file.split(','):
+    with open(file, 'r') as f:
+        for i, line in enumerate(tqdm(f)):
+            item = json.loads(line)
+            # del item['feature']
+            if len(rets_train) < 85000:
+                rets_train.append(json.dumps(item, ensure_ascii=False)+'\n')
+            elif len(rets_val) < 4588:
+                rets_val.append(json.dumps(item, ensure_ascii=False)+'\n')
+        
+
+with open(save_coarse_file_train, 'w') as f:
+    f.writelines(rets_train)
+with open(save_coarse_file_val, 'w') as f:
+    f.writelines(rets_val)

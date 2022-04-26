@@ -83,9 +83,9 @@ class TitleCatAttrMatchDataset(Dataset):
                                 for v in remove_values:
                                     new_item['title'] = new_item['title'].replace(v, "") 
                                 self.items.append(new_item)
-                                i+=1
-                                if i >500:
-                                    return
+                                # i+=1
+                                # if i >500:
+                                #     return
                 
     def __len__(self):
         return len(self.items)
@@ -184,3 +184,16 @@ def attrmatch_collate_fn(batch):
     labels = torch.stack(labels)
     masks = torch.stack(masks)
     return tensors, splits, labels, masks
+
+def title_cat_attrmatch_collate_fn(batch):
+    images = []
+    titles = []
+    labels = []
+    for image, title, label in batch:
+        images.append(image)
+        titles.append(title)
+        labels.append(label)
+    images = torch.tensor(images)
+    titles = titles
+    labels = torch.tensor(labels)
+    return images, titles, labels

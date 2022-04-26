@@ -8,7 +8,7 @@ from utils.lr_sched import adjust_learning_rate
 
 import argparse 
 parser = argparse.ArgumentParser('train_attr', add_help=False)
-parser.add_argument('--gpus', default='0', type=str)
+parser.add_argument('--gpus', default='2', type=str)
 args = parser.parse_args()   
 
 # fix the seed for reproducibility
@@ -40,8 +40,8 @@ min_lr = 5e-6
 warmup_epochs = 5
 
 # data
-train_file = 'data/tmp_data/equal_processed_data/fine45000.txt,data/tmp_data/equal_processed_data/attr/coarse85000.txt'
-val_file = 'data/tmp_data/equal_processed_data/fine5000.txt,data/tmp_data/equal_processed_data/attr/coarse4588.txt'
+train_file = 'data/tmp_data/equal_processed_data/fine45000.txt,data/tmp_data/equal_processed_data/coarse85000.txt'
+val_file = 'data/tmp_data/equal_processed_data/fine5000.txt,data/tmp_data/equal_processed_data/coarse4588.txt'
 
 vocab_file = 'data/tmp_data/vocab/vocab.txt'
 vocab_dict_file = 'data/tmp_data/vocab/vocab_dict.json'
@@ -49,9 +49,9 @@ neg_attr_dict_file = 'data/tmp_data/equal_processed_data/neg_attr.json'
 macbert_base_file = 'data/pretrain_model/macbert_base'
 
 # dataset
-from dataset.keyattrmatch_dataset import TitleCatAttrMatchDataset, attrmatch_collate_fn
+from dataset.keyattrmatch_dataset import TitleCatAttrMatchDataset, title_cat_attrmatch_collate_fn
 dataset = TitleCatAttrMatchDataset
-collate_fn = attrmatch_collate_fn
+collate_fn = title_cat_attrmatch_collate_fn
 
 train_dataset = dataset(train_file, neg_attr_dict_file)
 val_dataset = dataset(val_file, neg_attr_dict_file)
@@ -96,7 +96,7 @@ def evaluate(model, val_dataloader):
         images, titles, labels = batch 
         images = images.cuda()
         logits = model(images, titles)
-        logits = logits.squeeze(2).cpu()
+        logits = logits.cpu()
         
         logits = torch.sigmoid(logits)
         logits[logits>0.5] = 1
@@ -125,7 +125,7 @@ for epoch in range(max_epoch):
         
         images = images.cuda()
         
-        logits, mask = model(images, titles)
+        logits = model(images, titles)
         
         labels = labels.float().cuda()
 
@@ -152,7 +152,7 @@ for epoch in range(max_epoch):
         optimizer.step()
         
     acc = evaluate(model, val_dataloader)
-    print(acc)
+    print(f"eval acc: {acc}")
 
     if acc > max_acc:
         max_acc = acc
@@ -163,4 +163,4 @@ for epoch in range(max_epoch):
         last_path = save_path
         torch.save(model.state_dict(), save_path)
         
-    print(max_acc)
+    print(f"max acc: {max_acc}")
