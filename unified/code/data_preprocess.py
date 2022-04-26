@@ -83,6 +83,22 @@ attr_save_file = os.path.join(save_dir, 'attr_to_attrvals.json')
 with open(attr_save_file, 'w') as f:
     json.dump(attr_dict, f, ensure_ascii=False, indent=4)
 
+# 生成id-attr转换字典
+i = 0
+attr_to_id = {}
+id_to_attr = {}
+for key, value in attr_dict.items():
+    for v in value:
+        attr_to_id[v] = i
+        id_to_attr[i] = v
+        i+=1
+attr_to_id_save_file = os.path.join(save_dir, 'attr_to_id.json')
+with open(attr_to_id_save_file, 'w') as f:
+    json.dump(attr_to_id, f, ensure_ascii=False, indent=4)
+id_to_attr_save_file = os.path.join(save_dir, 'id_to_attr.json')
+with open(id_to_attr_save_file, 'w') as f:
+    json.dump(id_to_attr, f, ensure_ascii=False, indent=4)
+
 
 # 生成负例字典
 import copy
