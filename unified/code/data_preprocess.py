@@ -91,7 +91,7 @@ for key, value in attr_dict.items():
     for v in value:
         attr_to_id[v] = attr_id
         id_to_attr[attr_id] = v
-        attr_id+=1s
+        attr_id+=1
         
 attr_to_id_save_file = os.path.join(save_dir, 'attr_to_id.json')
 with open(attr_to_id_save_file, 'w') as f:
