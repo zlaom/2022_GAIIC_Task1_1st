@@ -129,7 +129,8 @@ class AttrIdMatchDataset(Dataset):
                             # 生成所有离散属性
                             for key, value in item['key_attr'].items():
                                 new_item = copy.deepcopy(item)
-                                new_item['key_attr'] = value
+                                new_item['key'] = key
+                                new_item['attr'] = value
                                 # 删除title节省内存
                                 del  new_item["title"]
                                 self.items.append(new_item)
@@ -143,22 +144,23 @@ class AttrIdMatchDataset(Dataset):
     def __getitem__(self, idx):
         item = self.items[idx]
         image = item["feature"]
-        key_attr = item["key_attr"]
+        key = item["key"]
+        attr = item["attr"]
         label = 1
         # 生成负例
         if random.random() < 0.5:
             label = 0
             # 生成易分负例
             if random.random() < 0:
-                sample_attr_list = self.neg_attr_dict[key_attr]["un_similar_attr"]
+                sample_attr_list = self.neg_attr_dict[attr]["un_similar_attr"]
             # 生成难分负例
             else:
-                sample_attr_list = self.neg_attr_dict[key_attr]["similar_attr"]
-            key_attr = random.sample(sample_attr_list, k=1)[0]
+                sample_attr_list = self.neg_attr_dict[attr]["similar_attr"]
+            attr = random.sample(sample_attr_list, k=1)[0]
         
-        key_attr_id = self.attr_to_id[key_attr]
+        attr_id = self.attr_to_id[attr]
 
-        return image, key_attr_id, label
+        return image, attr_id, label, key
     
 
 # 属性替换也根据频率决定的比率进行替换
@@ -253,11 +255,13 @@ def attr_id_match_collate_fn(batch):
     images = []
     attr_ids = []
     labels = []
-    for image, attr_id, label in batch:
+    keys = []
+    for image, attr_id, label, key in batch:
         images.append(image)
         attr_ids.append(attr_id)
         labels.append(label)
+        keys.append(key)
     images = torch.tensor(images)
     attr_ids = torch.tensor(attr_ids)
     labels = torch.tensor(labels)
-    return images, attr_ids, labels
+    return images, attr_ids, labels, keys
