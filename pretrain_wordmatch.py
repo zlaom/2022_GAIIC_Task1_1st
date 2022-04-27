@@ -85,7 +85,7 @@ split_config = BertConfig(num_hidden_layers=split_layers)
 fuse_config = BertConfig(num_hidden_layers=fuse_layers)
 model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
 if LOAD_CKPT:
-    bert = transformers.BertModel.from_pretrained('hfl/chinese-macbert-base', cache_dir='data/pretrained_model/macbert_base')
+    bert = transformers.BertModel.from_pretrained('data/pretrained_model/macbert_base')
     state_dict = bert.state_dict()
     names = list(state_dict.keys())
     new_dict = OrderedDict()

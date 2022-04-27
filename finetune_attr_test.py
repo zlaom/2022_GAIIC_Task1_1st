@@ -104,20 +104,16 @@ def evaluate(model, val_dataloader):
     correct = 0
     total = 0
     for batch in tqdm(val_dataloader):
-        images, splits, labels, attr_mask = batch 
+        images, splits, labels = batch 
         images = images.cuda()
         logits, mask = model(images, splits, word_match=True)
         logits = logits.squeeze(2).cpu()
         
         _, W = logits.shape
         labels = labels[:, :W].float()
-        attr_mask = attr_mask[:, :W].float()
-        
         mask = mask.to(torch.bool)
-        attr_mask = attr_mask.to(torch.bool)
-        attr_mask = attr_mask[mask]
-        logits = logits[mask][attr_mask]
-        labels = labels[mask][attr_mask]
+        logits = logits[mask]
+        labels = labels[mask]
         
         logits = torch.sigmoid(logits)
         logits[logits>0.5] = 1
@@ -128,33 +124,6 @@ def evaluate(model, val_dataloader):
         
     acc = correct / total
     return acc.item()
-
-# @torch.no_grad()
-# def evaluate(model, val_dataloader):
-#     model.eval()
-#     correct = 0
-#     total = 0
-#     for batch in tqdm(val_dataloader):
-#         images, splits, labels = batch 
-#         images = images.cuda()
-#         logits, mask = model(images, splits, word_match=True)
-#         logits = logits.squeeze(2).cpu()
-        
-#         _, W = logits.shape
-#         labels = labels[:, :W].float()
-#         mask = mask.to(torch.bool)
-#         logits = logits[mask]
-#         labels = labels[mask]
-        
-#         logits = torch.sigmoid(logits)
-#         logits[logits>0.5] = 1
-#         logits[logits<=0.5] = 0
-        
-#         correct += torch.sum(labels == logits)
-#         total += len(labels)
-        
-#     acc = correct / total
-#     return acc.item()
 
 
 max_acc = 0

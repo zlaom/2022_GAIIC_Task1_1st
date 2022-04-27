@@ -25,26 +25,24 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = 'output/split_pretrain/clsmatch_final/fusereplace_halfrandomkeyattr/0l6lexp6_0.55_test/'
+save_dir = 'output/pretrain/attr/single_attr/fuse_replace/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
-save_name = ''
+save_name = '0l6lexp6_0.3keyattr'
 
 # adjust learning rate
-LR_SCHED = True
-lr = 4e-5
+LR_SCHED = False
+lr = 1e-5
 min_lr = 5e-6
 warmup_epochs = 5
 
 LOAD_CKPT = False
-ckpt_file = 'output/split_pretrain/wordmatch/wordreplace/0l6lexp6/0.9270.pth'
+ckpt_file = ''
 
-# train_file = 'data/equal_split_word/coarse89588.txt'
-train_file = 'data/equal_split_word/title/fine40000.txt,data/equal_split_word/coarse89588.txt'
-# train_file = 'data/equal_split_word/title/fine40000.txt'
-val_file = 'data/equal_split_word/title/fine700.txt,data/equal_split_word/title/coarse1412.txt'
-# val_file = 'data/equal_split_word/title/fine9000.txt'
-# train_file = 'data/equal_split_word/fine45000.txt'
+# train_file = 'data/equal_split_word/attr/fine35000.txt'
+train_file = 'data/equal_split_word/attr/fine35000.txt,data/equal_split_word/attr/coarse65000.txt'
+val_file = 'data/equal_split_word/fine5000.txt,data/equal_split_word/attr/coarse4588.txt'
+
 vocab_dict_file = 'dataset/vocab/vocab_dict.json'
 vocab_file = 'dataset/vocab/vocab.txt'
 attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
@@ -54,7 +52,7 @@ with open(vocab_dict_file, 'r') as f:
 
 
 # dataset
-from dataset.clsmatch_dataset import FuseReplaceDataset, cls_collate_fn
+from dataset.attr_clsmatch_dataset import RandomReplaceDataset, FuseReplaceDataset, cls_collate_fn
 dataset = FuseReplaceDataset
 collate_fn = cls_collate_fn
 
@@ -166,6 +164,6 @@ for epoch in range(max_epoch):
         max_acc = acc
         if last_path:
             os.remove(last_path)
-        save_path = save_dir + save_name + '{:.4f}'.format(acc)+'.pth'
+        save_path = save_dir + save_name + '_' + '{:.4f}'.format(acc)+'.pth'
         last_path = save_path
         torch.save(model.state_dict(), save_path)
