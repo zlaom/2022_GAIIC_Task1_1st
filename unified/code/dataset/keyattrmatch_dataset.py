@@ -84,8 +84,8 @@ class TitleCatAttrMatchDataset(Dataset):
                                 self.items.append(new_item)
                                 # i+=1
                                 # if i >500:
-                                #     return
-                
+                                #     return  
+
     def __len__(self):
         return len(self.items)
         
@@ -197,8 +197,10 @@ class SubAttrIdMatchDataset(Dataset):
                                     del  new_item["title"]
                                     self.items.append(new_item)
                                     i+=1
-                                    if i >500:
-                                        return
+                                    # if i >500:
+                                    #     return
+        print(f"item len {i}")
+
                 
     def __len__(self):
         return len(self.items)
@@ -218,6 +220,78 @@ class SubAttrIdMatchDataset(Dataset):
             attr = random.sample(sample_attr_list, k=1)[0]
         
         attr_id = self.attr_to_id[attr]
+
+        return image, attr_id, label, key
+
+class TestSubAttrIdMatchDataset(Dataset):
+    '''generate positive and negative samples for attribute matching finetuning'''
+    def __init__(self, input_filename, neg_attr_dict_file, attr_to_attrvals):
+        with open(neg_attr_dict_file, 'r') as f:
+            self.neg_attr_dict = json.load(f)
+        
+        self.id_attr = {}
+        for key_attr, key_attr_values in attr_to_attrvals.items():
+
+            id_to_attr = {}
+            attr_to_id = {}
+            for attr_id, attr_v in enumerate(key_attr_values):
+                attr_to_id[attr_v] = attr_id
+                id_to_attr[attr_id] = attr_v
+
+            self.id_attr[key_attr]={
+                'id_to_attr':id_to_attr,
+                'attr_to_id':attr_to_id
+            }
+
+        # 提取数据
+        self.items = []
+        i = 0
+        count = {}
+        for file in input_filename.split(','):
+            with open(file, 'r') as f:
+                for line in tqdm(f):
+                    item = json.loads(line)
+                    if item['match']['图文']: # 训练集图文必须匹配
+                        if item['key_attr']: # 必须有属性
+                            # 生成所有离散属性
+                            for key, value in item['key_attr'].items():
+                                # 只提取该类别
+                                new_item = copy.deepcopy(item)
+                                new_item['key'] = key
+                                new_item['attr'] = value
+                                # 删除title节省内存
+                                del  new_item["title"]
+                                self.items.append(new_item)
+                                i+=1
+
+                                if key not in count.keys():
+                                    count[key]= 0
+                                else:
+                                    count[key]+=1
+                                # if i >500:
+                                #     return
+        print(f"item len {i}")
+        print(count)
+
+                
+    def __len__(self):
+        return len(self.items)
+        
+    def __getitem__(self, idx):
+        item = self.items[idx]
+        image = item["feature"]
+        key = item["key"]
+        attr = item["attr"]
+
+        label = 1
+        # 生成负例
+        if random.random() < 0.5:
+            label = 0
+            # 只生成同类负例
+            sample_attr_list = self.neg_attr_dict[attr]["similar_attr"]
+            attr = random.sample(sample_attr_list, k=1)[0]
+        
+        attr_id = self.id_attr[key]["attr_to_id"][attr]
 
         return image, attr_id, label, key
     

@@ -11,7 +11,8 @@ from tqdm import tqdm
 from utils.lr_sched import adjust_learning_rate
 
 parser = argparse.ArgumentParser('train_attr', add_help=False)
-parser.add_argument('--gpus', default='2', type=str)
+parser.add_argument('--gpus', default='0', type=str)
+parser.add_argument('--index', default='0', type=int)
 args = parser.parse_args()   
 
 gpus = args.gpus
@@ -29,15 +30,27 @@ attr_to_attrvals = 'data/tmp_data/equal_processed_data/attr_to_attrvals.json'
 with open(attr_to_attrvals, 'r') as f:
     attr_to_attrvals = json.load(f)
 
+
+
+
+
+key_attr_list = [['领型', '袖长', '衣长'], ['版型', '裙长', '穿着方式'], ['类别', '裤型', '裤长'], ['裤门襟', '闭合方式', '鞋帮高度']]
+
+current_key_attr = key_attr_list[args.index]
+print(current_key_attr)
+print(f"gpu {gpus}")
+
 # 遍历训练多个模型
-for key_attr, key_attr_values in attr_to_attrvals.items():
+for key_attr in current_key_attr:
+    key_attr_values = attr_to_attrvals[key_attr]
+    print(f"begin train {key_attr} attr_num {len(key_attr_values)}")
     # fix the seed for reproducibility
     seed = 0
     torch.manual_seed(seed)
     np.random.seed(seed)
     torch.backends.cudnn.benchmark = True
 
-    save_dir = f'data/model_data/attr_mlp_no_unsimiler_200/{key_attr}/'
+    save_dir = f'data/model_data/sub_attr_mlp_similer_100_drop0d5/{key_attr}/'
     
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
@@ -81,9 +94,9 @@ for key_attr, key_attr_values in attr_to_attrvals.items():
             collate_fn=collate_fn,
         )
 
-    # fuse model
+    # mlp model
     from model.attr_mlp import ATTR_ID_MLP
-    model = ATTR_ID_MLP()
+    model = ATTR_ID_MLP(attr_num=len(key_attr_values))
     model.cuda()
 
     # optimizer 
