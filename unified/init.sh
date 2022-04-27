@@ -1,6 +1,12 @@
 #!/bin/bash
-cp .condarc ~/
-conda env create -f env.yaml
+# conda 换清华源
+
+# cp .condarc ~/
+# 从文件创建conda环境
+# conda env create -f env.yaml
+conda create -n gaiic2022 python==3.9
+
+# 获取conda路径
 CONDA_CONFIG_ROOT_PREFIX=$(conda config --show root_prefix)
 echo "CONDA_CONFIG_ROOT_PREFIX= ${CONDA_CONFIG_ROOT_PREFIX}"
 get_conda_root_prefix() {
@@ -14,5 +20,11 @@ get_conda_root_prefix() {
 }
 CONDA_ROOT=$(get_conda_root_prefix)
 echo "CONDA_ROOT= ${CONDA_ROOT}"
+
+# 切换conda环境
 source "${CONDA_ROOT}/bin/activate" gaiic2022
-python --version
+
+# 安装依赖
+pip3 install torch --extra-index-url https://download.pytorch.org/whl/cu113
+pip3 install -r ./requirements.txt 
+

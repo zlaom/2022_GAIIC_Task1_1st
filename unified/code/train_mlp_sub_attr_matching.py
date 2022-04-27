@@ -16,7 +16,7 @@ args = parser.parse_args()
 
 gpus = args.gpus
 batch_size = 256
-max_epoch = 1
+max_epoch = 100
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 # adjust learning rate
@@ -101,7 +101,7 @@ for key_attr, key_attr_values in attr_to_attrvals.items():
         correct = 0
         total = 0
         for batch in tqdm(val_dataloader):
-            images, attr_ids, labels = batch 
+            images, attr_ids, labels, keys = batch 
             images = images.cuda()
             attr_ids = attr_ids.cuda()
             logits = model(images, attr_ids)
@@ -130,7 +130,7 @@ for key_attr, key_attr_values in attr_to_attrvals.items():
             if LR_SCHED:
                 lr_now = adjust_learning_rate(optimizer, max_epoch, epoch+1, warmup_epochs, lr, min_lr)
                 
-            images, attr_ids, labels = batch 
+            images, attr_ids, labels, keys = batch 
             images = images.cuda()
             attr_ids = attr_ids.cuda()
             labels = labels.float().cuda()
@@ -167,8 +167,10 @@ for key_attr, key_attr_values in attr_to_attrvals.items():
             # if last_path:
             #     os.remove(last_path)
             save_path = save_dir + save_name + f'_{epoch}_{acc:.4f}.pth'
+            best_save_path = save_dir + save_name + '.pth'
             # save_path = save_dir + save_name + '.pth'
             last_path = save_path
             torch.save(model.state_dict(), save_path)
+            torch.save(model.state_dict(), best_save_path)
             
         print(f"{key_attr} epoch {epoch} max acc: {max_acc}")

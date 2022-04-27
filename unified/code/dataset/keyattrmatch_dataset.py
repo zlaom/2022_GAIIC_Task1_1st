@@ -168,8 +168,7 @@ class SubAttrIdMatchDataset(Dataset):
         with open(neg_attr_dict_file, 'r') as f:
             self.neg_attr_dict = json.load(f)
 
-        with open(attr_to_attrvals, 'r') as f:
-            self.attr_to_attrvals = json.load(f)
+        self.attr_to_attrvals = attr_to_attrvals
         
         key_attr_values = self.attr_to_attrvals[key_attr]
         self.id_to_attr = {}

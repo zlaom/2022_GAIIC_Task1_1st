@@ -1,0 +1,4 @@
+transformers
+einops
+tqdm
+LTP
