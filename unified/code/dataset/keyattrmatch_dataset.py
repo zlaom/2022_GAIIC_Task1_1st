@@ -162,6 +162,66 @@ class AttrIdMatchDataset(Dataset):
 
         return image, attr_id, label, key
     
+class SubAttrIdMatchDataset(Dataset):
+    '''generate positive and negative samples for attribute matching finetuning'''
+    def __init__(self, input_filename, neg_attr_dict_file, attr_to_attrvals, key_attr):
+        with open(neg_attr_dict_file, 'r') as f:
+            self.neg_attr_dict = json.load(f)
+
+        with open(attr_to_attrvals, 'r') as f:
+            self.attr_to_attrvals = json.load(f)
+        
+        key_attr_values = self.attr_to_attrvals[key_attr]
+        self.id_to_attr = {}
+        self.attr_to_id = {}
+        for attr_id, attr_v in enumerate(key_attr_values):
+            self.attr_to_id[attr_v] = attr_id
+            self.id_to_attr[attr_id] = attr_v
+
+        # 提取数据
+        self.items = []
+        i = 0
+        for file in input_filename.split(','):
+            with open(file, 'r') as f:
+                for line in tqdm(f):
+                    item = json.loads(line)
+                    if item['match']['图文']: # 训练集图文必须匹配
+                        if item['key_attr']: # 必须有属性
+                            # 生成所有离散属性
+                            for key, value in item['key_attr'].items():
+                                # 只提取该类别
+                                if key == key_attr:
+                                    new_item = copy.deepcopy(item)
+                                    new_item['key'] = key
+                                    new_item['attr'] = value
+                                    # 删除title节省内存
+                                    del  new_item["title"]
+                                    self.items.append(new_item)
+                                    i+=1
+                                    if i >500:
+                                        return
+                
+    def __len__(self):
+        return len(self.items)
+        
+    def __getitem__(self, idx):
+        item = self.items[idx]
+        image = item["feature"]
+        key = item["key"]
+        attr = item["attr"]
+
+        label = 1
+        # 生成负例
+        if random.random() < 0.5:
+            label = 0
+            # 只生成同类负例
+            sample_attr_list = self.neg_attr_dict[attr]["similar_attr"]
+            attr = random.sample(sample_attr_list, k=1)[0]
+        
+        attr_id = self.attr_to_id[attr]
+
+        return image, attr_id, label, key
+    
 
 # 属性替换也根据频率决定的比率进行替换
 class AttrMatchProbaDataset(Dataset):

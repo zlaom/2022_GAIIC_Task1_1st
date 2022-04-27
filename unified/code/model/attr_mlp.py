@@ -8,7 +8,7 @@ class ATTR_ID_MLP(nn.Module):
         
         image_dim = 2048
         attr_num = 54
-        self.image_dropout = nn.Dropout(0.5)
+        self.image_dropout = nn.Dropout(0)
         self.image_linear = nn.Sequential(
             nn.Linear(image_dim, image_dim),
             nn.LayerNorm(image_dim)
