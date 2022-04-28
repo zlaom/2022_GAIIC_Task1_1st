@@ -4,6 +4,7 @@ import json
 import random
 import argparse 
 import numpy as np 
+import torch.nn as nn
 
 from torch.utils.data import DataLoader
 from tqdm import tqdm 
@@ -11,13 +12,13 @@ from tqdm import tqdm
 from utils.lr_sched import adjust_learning_rate
 
 parser = argparse.ArgumentParser('train_attr', add_help=False)
-parser.add_argument('--gpus', default='0', type=str)
+parser.add_argument('--gpus', default='2', type=str)
 parser.add_argument('--index', default='0', type=int)
 args = parser.parse_args()   
 
 gpus = args.gpus
 batch_size = 256
-max_epoch = 100
+max_epoch = 200
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 # adjust learning rate
@@ -30,8 +31,8 @@ attr_to_attrvals = 'data/tmp_data/equal_processed_data/attr_to_attrvals.json'
 with open(attr_to_attrvals, 'r') as f:
     attr_to_attrvals = json.load(f)
 
-
-key_attr_list = [['领型', '袖长', '衣长'], ['版型', '裙长', '穿着方式'], ['类别', '裤型', '裤长'], ['裤门襟', '闭合方式', '鞋帮高度']]
+# key_attr_list = [['领型', '袖长', '衣长'], ['版型', '裙长', '穿着方式'], ['类别', '裤型', '裤长'], ['裤门襟', '闭合方式', '鞋帮高度']]
+key_attr_list = [['版型', '领型', '袖长', '衣长',  '裙长', '穿着方式'], ['类别', '裤型', '裤长', '裤门襟', '闭合方式', '鞋帮高度']]
 
 current_key_attr = key_attr_list[args.index]
 print(current_key_attr)
@@ -47,7 +48,7 @@ for key_attr in current_key_attr:
     np.random.seed(seed)
     torch.backends.cudnn.benchmark = True
 
-    save_dir = f'data/model_data/sub_attr_simple_mlp_similer_100_drop0d5/{key_attr}/'
+    save_dir = f'data/model_data/sub_attr_cls_100_drop0d5/{key_attr}/'
     
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
@@ -65,12 +66,12 @@ for key_attr in current_key_attr:
     macbert_base_file = 'data/pretrain_model/macbert_base'
 
     # dataset
-    from dataset.keyattrmatch_dataset import SubAttrIdMatchDataset, attr_id_match_collate_fn
-    dataset = SubAttrIdMatchDataset
-    collate_fn = attr_id_match_collate_fn
+    from dataset.keyattrmatch_dataset import SubAttrIdClassDataset, attr_id_class_collate_fn
+    dataset = SubAttrIdClassDataset
+    collate_fn = attr_id_class_collate_fn
 
-    train_dataset = dataset(train_file, neg_attr_dict_file, attr_to_attrvals, key_attr)
-    val_dataset = dataset(val_file, neg_attr_dict_file, attr_to_attrvals, key_attr)
+    train_dataset = dataset(train_file, attr_to_attrvals, key_attr)
+    val_dataset = dataset(val_file, attr_to_attrvals, key_attr)
 
     train_dataloader = DataLoader(
             train_dataset,
@@ -92,15 +93,15 @@ for key_attr in current_key_attr:
         )
 
     # mlp model
-    from model.attr_mlp import ATTR_ID_MLP2
-    model = ATTR_ID_MLP2(attr_num=len(key_attr_values))
+    from model.attr_mlp import AttrIdClassMLP
+    model = AttrIdClassMLP(attr_num=len(key_attr_values))
     model.cuda()
 
     # optimizer 
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
     # loss
-    loss_fn = torch.nn.BCEWithLogitsLoss()
+    loss_fn = nn.CrossEntropyLoss()
 
     # evaluate 
     @torch.no_grad()
@@ -111,17 +112,13 @@ for key_attr in current_key_attr:
         correct = 0
         total = 0
         for batch in tqdm(val_dataloader):
-            images, attr_ids, labels, keys = batch 
+            images, labels, keys = batch 
             images = images.cuda()
-            attr_ids = attr_ids.cuda()
-            logits = model(images, attr_ids)
-            logits = logits.cpu()
-            
-            logits = torch.sigmoid(logits)
-            logits[logits>0.5] = 1
-            logits[logits<=0.5] = 0
-            
-            correct += torch.sum(labels == logits)
+            labels = labels.cuda()
+            logits = model(images)
+            predict = torch.argmax(logits, dim=-1)
+
+            correct += torch.sum(labels == predict).cpu()
             total += len(labels)
             
         acc = correct / total
@@ -140,11 +137,11 @@ for key_attr in current_key_attr:
             if LR_SCHED:
                 lr_now = adjust_learning_rate(optimizer, max_epoch, epoch+1, warmup_epochs, lr, min_lr)
                 
-            images, attr_ids, labels, keys = batch 
+            images, labels, keys = batch 
             images = images.cuda()
-            attr_ids = attr_ids.cuda()
-            labels = labels.float().cuda()
-            logits = model(images, attr_ids)
+            labels = labels.cuda()
+            logits = model(images)
+            loss = loss_fn(logits, labels)
             
 
             # train acc
@@ -157,14 +154,11 @@ for key_attr in current_key_attr:
                 else:
                     print('{} Epoch:[{}|{}], Acc:{:.2f}%'.format(key_attr, epoch, max_epoch, train_acc*100))
                                 
-            proba = torch.sigmoid(logits.cpu())
-            proba[proba>0.5] = 1
-            proba[proba<=0.5] = 0
-            correct += torch.sum(labels.cpu() == proba)
+            predict = torch.argmax(logits, dim=-1)
+            correct += torch.sum(labels == predict).cpu()
             total += len(labels)
             i += 1
             
-            loss = loss_fn(logits, labels)
             
             loss.backward()
             optimizer.step()

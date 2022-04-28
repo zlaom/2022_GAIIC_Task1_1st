@@ -56,3 +56,55 @@ class ATTR_ID_MLP(nn.Module):
         logits = torch.squeeze(logits)
 
         return logits
+
+class ATTR_ID_MLP2(nn.Module):
+    def __init__(self, attr_num, image_dim=2048, dropout=0.5):
+        super().__init__()
+        self.image_dropout = nn.Dropout(dropout)
+        
+        self.image_linear = nn.Sequential(
+            nn.Linear(image_dim, image_dim),
+            nn.LayerNorm(image_dim)
+        )
+
+        self.attr_id_emb = nn.Embedding(attr_num, 64)
+
+        self.match_head = nn.Sequential(
+            nn.Linear(image_dim + 64, 512),
+            nn.LayerNorm(512),
+            nn.ReLU(),
+            nn.Linear(512, 256),
+            nn.LayerNorm(256),
+            nn.ReLU(),
+            nn.Linear(256, 1),
+        )
+
+
+    def forward(self, image, attr_id):
+        image = self.image_dropout(image)
+        attr_id_emb = self.attr_id_emb(attr_id)
+        image = self.image_linear(image)
+        features = torch.cat((image, attr_id_emb), dim=-1)
+        logits = self.match_head(features)
+        logits = torch.squeeze(logits)
+        return logits
+
+class AttrIdClassMLP(nn.Module):
+    def __init__(self, attr_num, image_dim=2048, dropout=0.5):
+        super().__init__()
+        self.image_dropout = nn.Dropout(dropout)
+        self.cls_head = nn.Sequential(
+            nn.Linear(image_dim, 512),
+            nn.LayerNorm(512),
+            nn.ReLU(),
+            nn.Linear(512, 256),
+            nn.LayerNorm(256),
+            nn.ReLU(),
+            nn.Linear(256, attr_num),
+        )
+
+
+    def forward(self, image):
+        image = self.image_dropout(image)
+        logits = self.cls_head(image)
+        return logits

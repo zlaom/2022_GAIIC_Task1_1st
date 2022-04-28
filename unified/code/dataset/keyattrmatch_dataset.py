@@ -294,7 +294,53 @@ class TestSubAttrIdMatchDataset(Dataset):
         attr_id = self.id_attr[key]["attr_to_id"][attr]
 
         return image, attr_id, label, key
-    
+
+class SubAttrIdClassDataset(Dataset):
+    '''generate positive and negative samples for attribute matching finetuning'''
+    def __init__(self, input_filename, attr_to_attrvals, key_attr):
+        key_attr_values = attr_to_attrvals[key_attr]
+        self.id_to_attr = {}
+        self.attr_to_id = {}
+        for attr_id, attr_v in enumerate(key_attr_values):
+            self.attr_to_id[attr_v] = attr_id
+            self.id_to_attr[attr_id] = attr_v
+
+        # 提取数据
+        self.items = []
+        i = 0
+        for file in input_filename.split(','):
+            with open(file, 'r') as f:
+                for line in tqdm(f):
+                    item = json.loads(line)
+                    if item['match']['图文']: # 训练集图文必须匹配
+                        if item['key_attr']: # 必须有属性
+                            # 生成所有离散属性
+                            for key, value in item['key_attr'].items():
+                                # 只提取该类别
+                                if key == key_attr:
+                                    new_item = copy.deepcopy(item)
+                                    new_item['key'] = key
+                                    new_item['attr'] = value
+                                    # 删除title节省内存
+                                    del  new_item["title"]
+                                    self.items.append(new_item)
+                                    # i+=1
+                                    # if i >500:
+                                    #     return
+        print(f"item len {i}")
+
+                
+    def __len__(self):
+        return len(self.items)
+        
+    def __getitem__(self, idx):
+        item = self.items[idx]
+        image = item["feature"]
+        key = item["key"]
+        attr = item["attr"]
+        attr_id = self.attr_to_id[attr]
+
+        return image, attr_id, key
 
 # 属性替换也根据频率决定的比率进行替换
 class AttrMatchProbaDataset(Dataset):
@@ -398,3 +444,15 @@ def attr_id_match_collate_fn(batch):
     attr_ids = torch.tensor(attr_ids)
     labels = torch.tensor(labels)
     return images, attr_ids, labels, keys
+    
+def attr_id_class_collate_fn(batch):
+    images = []
+    attr_ids = []
+    keys = []
+    for image, attr_id, key in batch:
+        images.append(image)
+        attr_ids.append(attr_id)
+        keys.append(key)
+    images = torch.tensor(images)
+    attr_ids = torch.tensor(attr_ids)
+    return images, attr_ids, keys
