@@ -25,10 +25,10 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = 'output/split_pretrain/clsmatch_final/fusereplace_halfrandomkeyattr/0l6lexp6_0.55_test/'
+save_dir = 'output/pretrain/title/FuseRep/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
-save_name = ''
+save_name = '0l6lexp6_fuse0.55_coarse89588'
 
 # adjust learning rate
 LR_SCHED = True
@@ -39,8 +39,8 @@ warmup_epochs = 5
 LOAD_CKPT = False
 ckpt_file = 'output/split_pretrain/wordmatch/wordreplace/0l6lexp6/0.9270.pth'
 
-# train_file = 'data/equal_split_word/coarse89588.txt'
-train_file = 'data/equal_split_word/title/fine40000.txt,data/equal_split_word/coarse89588.txt'
+train_file = 'data/equal_split_word/coarse89588.txt'
+# train_file = 'data/equal_split_word/title/fine40000.txt,data/equal_split_word/coarse89588.txt'
 # train_file = 'data/equal_split_word/title/fine40000.txt'
 val_file = 'data/equal_split_word/title/fine700.txt,data/equal_split_word/title/coarse1412.txt'
 # val_file = 'data/equal_split_word/title/fine9000.txt'
@@ -166,6 +166,6 @@ for epoch in range(max_epoch):
         max_acc = acc
         if last_path:
             os.remove(last_path)
-        save_path = save_dir + save_name + '{:.4f}'.format(acc)+'.pth'
+        save_path = save_dir + save_name + '_' + '{:.4f}'.format(acc)+'.pth'
         last_path = save_path
         torch.save(model.state_dict(), save_path)
