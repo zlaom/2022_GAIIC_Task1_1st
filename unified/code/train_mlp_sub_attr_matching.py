@@ -16,8 +16,8 @@ parser.add_argument('--index', default='0', type=int)
 args = parser.parse_args()   
 
 gpus = args.gpus
-batch_size = 256
-max_epoch = 100
+batch_size = 512
+max_epoch = 200
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 # adjust learning rate
@@ -47,7 +47,7 @@ for key_attr in current_key_attr:
     np.random.seed(seed)
     torch.backends.cudnn.benchmark = True
 
-    save_dir = f'data/model_data/sub_attr_simple_mlp_similer_100_drop0d5/{key_attr}/'
+    save_dir = f'data/model_data/sub_attr_simple_mlp_drop0d5/{key_attr}/'
     
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
@@ -69,8 +69,8 @@ for key_attr in current_key_attr:
     dataset = SubAttrIdMatchDataset
     collate_fn = attr_id_match_collate_fn
 
-    train_dataset = dataset(train_file, neg_attr_dict_file, attr_to_attrvals, key_attr)
-    val_dataset = dataset(val_file, neg_attr_dict_file, attr_to_attrvals, key_attr)
+    train_dataset = dataset(train_file, neg_attr_dict_file, attr_to_attrvals, key_attr, random_neg=False)
+    val_dataset = dataset(val_file, neg_attr_dict_file, attr_to_attrvals, key_attr, random_neg=False)
 
     train_dataloader = DataLoader(
             train_dataset,

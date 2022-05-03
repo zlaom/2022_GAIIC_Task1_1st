@@ -9,7 +9,7 @@ from utils.lr_sched import adjust_learning_rate
 
 import argparse 
 parser = argparse.ArgumentParser('train_attr', add_help=False)
-parser.add_argument('--gpus', default='2', type=str)
+parser.add_argument('--gpus', default='0', type=str)
 args = parser.parse_args()   
 
 # fix the seed for reproducibility
@@ -19,20 +19,18 @@ np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
 gpus = args.gpus
-batch_size = 256
-max_epoch = 200
+batch_size = 512
+max_epoch = 100
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 split_layers = 0
 fuse_layers = 12
 n_img_expand = 6
 
-save_dir = 'data/model_data/attr_mlp_no_unsimiler_200/'
+save_dir = 'data/model_data/attr_mlp_e100_b512_d0.5/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
-save_name = 'attr_best_model'
-
-LOAD_CKPT = True
+save_name = 'attr_model'
 
 # adjust learning rate
 LR_SCHED = False
@@ -55,8 +53,8 @@ from dataset.keyattrmatch_dataset import AttrIdMatchDataset, attr_id_match_colla
 dataset = AttrIdMatchDataset
 collate_fn = attr_id_match_collate_fn
 
-train_dataset = dataset(train_file, neg_attr_dict_file, attr_to_id)
-val_dataset = dataset(val_file, neg_attr_dict_file, attr_to_id)
+train_dataset = dataset(train_file, neg_attr_dict_file, attr_to_id, random_neg=False)
+val_dataset = dataset(val_file, neg_attr_dict_file, attr_to_id, random_neg=False)
 
 train_dataloader = DataLoader(
         train_dataset,
@@ -97,7 +95,7 @@ def evaluate(model, val_dataloader):
     correct = 0
     total = 0
     for batch in tqdm(val_dataloader):
-        images, attr_ids, labels = batch 
+        images, attr_ids, labels, _ = batch 
         images = images.cuda()
         attr_ids = attr_ids.cuda()
         logits = model(images, attr_ids)
@@ -126,7 +124,7 @@ for epoch in range(max_epoch):
         if LR_SCHED:
             lr_now = adjust_learning_rate(optimizer, max_epoch, epoch+1, warmup_epochs, lr, min_lr)
             
-        images, attr_ids, labels = batch 
+        images, attr_ids, labels, _ = batch 
         images = images.cuda()
         attr_ids = attr_ids.cuda()
         labels = labels.float().cuda()
@@ -160,11 +158,10 @@ for epoch in range(max_epoch):
 
     if acc > max_acc:
         max_acc = acc
-        # if last_path:
-        #     os.remove(last_path)
         save_path = save_dir + save_name + f'_{epoch}_{acc:.4f}.pth'
-        # save_path = save_dir + save_name + '.pth'
+        best_save_path = save_dir + save_name + '.pth'
         last_path = save_path
         torch.save(model.state_dict(), save_path)
-        
+        torch.save(model.state_dict(), best_save_path)
+            
     print(f"max acc: {max_acc}")
