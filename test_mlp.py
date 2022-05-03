@@ -10,7 +10,7 @@ import argparse
 import yaml
 
 import collections
-from models.gaiic_model import ITM_ATTR_MLP, ITM_ATTR_Model, ITM_ALL_Model
+from models.gaiic_model import ITM_ATTR_MLP, ITM_ALL_CAT_Model, ITM_ALL_Model
 
 import sys
 import codecs
@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
     # 图文匹配的model
     all_model_path = test_config['ALL_CHECKPOINT_PATH']
-    all_model = ITM_ALL_Model(config['MODEL']['ALL_MATCH'])
+    all_model = ITM_ALL_CAT_Model(config['MODEL']['ALL_MATCH'])
     all_model.load_state_dict(torch.load(all_model_path))
     all_model.cuda()
     all_model.eval()

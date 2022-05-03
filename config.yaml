@@ -12,7 +12,7 @@ MODEL:
     IMAGE_DIM: 2048
     NUM_ATTR: 12
   ALL_MATCH:
-    CHECKPOINT_PATH: checkpoints/train/CATMODEL_epoch151_val_loss0.2137_val_acc0.9155_.pth
+    CHECKPOINT_PATH: checkpoints/train/CAT_epoch240_val_loss0.4944_val_acc0.8317_.pth
     MAC_BERT:
       NAME: MAC_BERT
       MODEL_PATH: data/MacBert
@@ -27,7 +27,7 @@ MODEL:
 OPTIMIZER:
   LEARNING_RATE: 0.0001
   COEF_LR: 5.0
-  WEIGHT_DECAY: 0.00001
+  WEIGHT_DECAY: 0.
   WARMUP_PROPORTION: 0.1
   ETA_MIN: 0.00005
 
@@ -41,15 +41,15 @@ OPTIM:
 
 
 FINETUNE:
-  DATA_PATH: ./data/finetune_all_match_0.3.txt
+  DATA_PATH: ./data/new_finetune_data.txt
   DATA_PATH_2: ./data/new_fine.txt
   ATTR_PATH: ./data/attr_to_attrvals.json
   OUT_PATH: checkpoints/
-  EPOCHS: 10
+  EPOCHS: 14
   RATIO: 0.8
   SHUFFLE: FALSE
-  SEED: 2022
-  TRAIN_BATCH: 512
+  SEED: 2
+  TRAIN_BATCH: 128
   VAL_BATCH: 256
   NUM_WORKERS: 4
   LOG_STEP: 10
@@ -57,7 +57,7 @@ FINETUNE:
 
 
 ATTR_TRAIN:
-  DATA_PATH: ./data/all_attr_match.txt
+  DATA_PATH: ./data/new_finetune_data.txt
   ATTR_PATH: ./data/attr_dic.json
   OUT_PATH: checkpoints/
   EPOCHS: 40
@@ -70,14 +70,14 @@ ATTR_TRAIN:
   LOG_STEP: 40
 
 ALL_TRAIN:
-  DATA_PATH_1: ./data/new_pos_coarse.txt
-  DATA_PATH_2: ./data/new_fine.txt
-  ATTR_PATH: ./data/attr_match_78.json
+  TRAIN_PATH: './data/equal_processed_data/coarse_pretrain.txt,./data/equal_processed_data/fine_pretrain.txt'
+  VAL_PATH: './data/equal_processed_data/fine_val.txt,./data/equal_processed_data/coarse1412.txt'
+  ATTR_PATH: ./data/equal_processed_data/attr_to_attrvals.json
   OUT_PATH: checkpoints/
-  EPOCHS: 100
+  EPOCHS: 600
   RATIO: 0.95
   SHUFFLE: FALSE
-  SEED: 2020
+  SEED: 3
   TRAIN_BATCH: 768
   VAL_BATCH: 512
   NUM_WORKERS: 4
@@ -86,8 +86,8 @@ ALL_TRAIN:
 
 
 TEST:
-  DATA_PATH: ./data/test_attr_A.txt
+  DATA_PATH: ./data/equal_split_word/test_A.txt
   ATTR_PATH: ./data/attr_to_attrvals.json
-  OUT_PATH: result/test_A_split_no_0.9570_attr_0.9311.txt
-  ATTR_CHECKPOINT_PATH: checkpoints/train/NORM_2021_SE_ATTR_Train_epoch7_val_loss0.1676_val_acc0.9311_.pth
-  ALL_CHECKPOINT_PATH: checkpoints/finetune/EPOCH_120_ADD_CHANGE_2151_FINETUNE_MATCH_Train_epoch3_val_loss0.1235_val_acc0.9570_.pth
+  OUT_PATH: result/test_A_match_1.txt
+  ATTR_CHECKPOINT_PATH: checkpoints/train/NORM_SE_ATTR_Train_epoch9_val_loss0.1702_val_acc0.9339_.pth
+  ALL_CHECKPOINT_PATH: checkpoints/finetune/CAT_76_ADD_CHANGE_2244_FINETUNE_MATCH_Train_epoch6_val_loss0.2086_val_acc0.9195_.pth

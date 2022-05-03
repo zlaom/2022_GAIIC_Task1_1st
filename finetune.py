@@ -11,14 +11,16 @@ import argparse
 import numpy as np
 import scipy.io as scio
 import random
-os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+os.environ["CUDA_VISIBLE_DEVICES"] = '3'
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.tensorboard import SummaryWriter
 from utils.utils import warmup_lr_schedule, step_lr_schedule
-from data_pre.dataset import GaiicAttrDataset, GaiicFinetuneDataset
-from models.gaiic_model import ITM_ALL_CAT_Model, ITM_ATTR_Model, ITM_ALL_Model
+
+from data_pre.cls_match_dataset import ITMDataset, cls_collate_fn, ITMAttrDataset
+from models.fuse_model import FuseModel
+from models.hero_bert.bert_config import BertConfig
 import tqdm
 
         
@@ -30,7 +32,7 @@ def set_seed_logger(dataset_cfg):
     torch.cuda.manual_seed(dataset_cfg['SEED'])
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
-
+    
     logging.basicConfig(level=logging.INFO,
                         format=
                         '%(asctime)s - %(levelname)s: %(message)s',
@@ -40,43 +42,30 @@ def set_seed_logger(dataset_cfg):
 
 
 def init_model(model_cfg, device):
-    model = ITM_ALL_CAT_Model(model_cfg)
-    model.load_state_dict(torch.load(model_cfg['CHECKPOINT_PATH']))
+    split_config = BertConfig(num_hidden_layers=0)
+    fuse_config = BertConfig(num_hidden_layers=6)
+    model = FuseModel(split_config, fuse_config, 'data/split_word/vocab/vocab.txt', n_img_expand=6)
+    model.load_state_dict(torch.load('checkpoints/train/h6_epd6_mean_best_loss.pth'))
     model = model.to(device)
     return model
 
 
 def get_dataloader(dataset_cfg):
     
-    data_path = dataset_cfg['DATA_PATH']
-    data_list = []
-    pos_data_list = []
-    neg_data_list = []
-    with open(data_path, 'r', encoding='utf-8') as f:
-        lines = f.readlines()
-        for line in lines:
-            data = json.loads(line)
-            if data['all_match'] == 1:
-                pos_data_list.append(data)
-            else:
-                neg_data_list.append(data)
-    np.random.shuffle(pos_data_list)
-    np.random.shuffle(neg_data_list)        
-    train_list = pos_data_list[:len(pos_data_list)-1000] + neg_data_list[:len(neg_data_list)-1000]
-    val_list = pos_data_list[-1000:] + neg_data_list[-1000:]
-    np.random.shuffle(train_list)
-    np.random.shuffle(val_list)
-    train_dataset = GaiicAttrDataset(train_list,)
-    val_dataset = GaiicAttrDataset(val_list,)
+    train_path = './data/equal_split_word/title/fine8312.txt,./data/equal_split_word/title/coarse8312.txt'
+    val_path = './data/equal_split_word/title/fine700.txt,./data/equal_split_word/title/coarse2100.txt'    
+
+    train_dataset = ITMDataset(train_path, )
+    val_dataset = ITMDataset(val_path, )
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=dataset_cfg['TRAIN_BATCH'], shuffle=True,
-        num_workers=dataset_cfg['NUM_WORKERS'], drop_last=False, pin_memory=True)
+        num_workers=dataset_cfg['NUM_WORKERS'], drop_last=True, pin_memory=True, collate_fn=cls_collate_fn)
     val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=dataset_cfg['VAL_BATCH'], shuffle=False,
-        num_workers=dataset_cfg['NUM_WORKERS'], drop_last=False, pin_memory=True)
+        num_workers=dataset_cfg['NUM_WORKERS'], drop_last=False, pin_memory=True, collate_fn=cls_collate_fn)
 
-    return train_loader, val_loader, len(train_list), len(val_list)
+    return train_loader, val_loader, 18000, 2124
 
 
 def train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn, device):
@@ -87,22 +76,23 @@ def train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn, d
     total, correct = 0., 0.
     for step, all_dic in enumerate(train_dataloader):
         optimizer.zero_grad()
-        # 
-        image, text = all_dic['feature'], all_dic['title']
-        label = torch.from_numpy(np.array(all_dic['all_match'])).to(device).long()
-        image = torch.stack(image, dim=1).to(device).float()
-        output = model(image, text)
 
+        images, splits, labels = all_dic
+        images = images.to(device)
+        labels = labels.to(device)
+        output = model(images, splits)
+        
         _, predicted = torch.max(output.data, 1)
-        loss = loss_fn(output, label)
-        total += label.size(0)
-        correct += (predicted == label).sum()
+
+        loss = loss_fn(output, labels)
+        total += labels.size(0)
+        correct += (predicted == labels).sum()
         loss.backward()
         optimizer.step()
         
-        train_loss_list.append(loss.item() * image.size(0))
+        train_loss_list.append(loss.item() * images.size(0))
         if (step + 1) % dataset_cfg['LOG_STEP'] == 0:
-            logging.info('  Epoch: %d/%s, Step: %d/%d, Train_Loss: %f, Train_all_match_Acc: %f ',
+            logging.info('  Epoch: %d/%s, Step: %d/%d, Train_Loss: %f, Train_attr_match_Acc: %f ',
                          epoch + 1, dataset_cfg['EPOCHS'], step + 1, len(train_dataloader),
                          loss.item(), correct/total)
 
@@ -116,17 +106,17 @@ def test_epoch(model, val_dataloader, loss_fn, device):
     val_loss_list = []
     total, correct = 0., 0.
     with torch.no_grad():
-        for step, all_dic in tqdm.tqdm(enumerate(val_dataloader)):
-            image, text = all_dic['feature'], all_dic['title']
-            label = torch.from_numpy(np.array(all_dic['all_match'])).to(device).long()
-            image = torch.stack(image, dim=1).to(device).float()
-            output = model(image, text)
+        for all_dic in tqdm.tqdm(val_dataloader):
+            images, splits, labels = all_dic
+            images = images.to(device)
+            labels = labels.to(device)
 
-            _, predicted = torch.max(output.data, 1)
+            output = model(images, splits)
             
-            total += label.size(0)
-            correct += (predicted == label).sum()
-            loss = loss_fn(output, label)
+            _, predicted = torch.max(output.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum()
+            loss = loss_fn(output, labels)
             val_loss_list.append(loss.item())
             
         
@@ -153,6 +143,7 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
     
 
     for epoch in range(dataset_cfg['EPOCHS']):
+        # step_lr_schedule(optimizer, epoch, optim_cfg['LR'], optim_cfg['MIN_LR'], optim_cfg['WEIGHT_DECAY'])
         # test_epoch(model, val_dataloader, loss_fn_1, device)
         train_loss = train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn_1,  device)
         val_loss, acc = test_epoch(model, val_dataloader, loss_fn_1, device)
@@ -164,7 +155,7 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
                      train_loss, val_loss,  acc)
         
         torch.save(model.state_dict(),
-                os.path.join(output_folder, 'CAT_51_ADD_CHANGE_2244_FINETUNE_MATCH_Train_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
+                os.path.join(output_folder, 'seed_2_h6_epd6_finetune_best_loss_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
         
 
 
@@ -179,7 +170,8 @@ if __name__ == '__main__':
     model_cfg = config['MODEL']['ALL_MATCH']
     dataset_cfg = config['FINETUNE']
     optim_cfg = config['OPTIM']
-    
+    print(dataset_cfg)
+    print('sb ayre')
     output_folder = dataset_cfg['OUT_PATH']
     os.makedirs(output_folder, exist_ok=True)
     os.system('cp {} {}/config.yaml'.format(yaml_path, output_folder))

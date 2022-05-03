@@ -1,0 +1,24 @@
+data_process_1:
+  origin_data:
+      coarse_data: ../data/train_coarse.txt
+      fine_data: ../data/train_fine.txt
+      attr_dict_data: ../data/attr_to_attrvals.json
+  save_data: ../data/equal_processed_data
+
+data_processed_2:
+  ltp_path: ../data/ltp_base
+  attr_dict_file: ../data/equal_processed_data/attr_to_attrvals.json
+  fine_file: ../data/equal_processed_data/fine45000.txt
+  coarse_file: ../data/equal_processed_data/coarse89588.txt
+  fine_val_file: ../data/equal_processed_data/fine50000.txt
+  coarse_val_file: ../data/equal_processed_data/coarse10412.txt
+  save_dir: '../data/split_word'
+  vocab_dir: '../data/split_word/vocab'
+
+data_processed_3:
+  attr_dict_file: ../data/equal_processed_data/attr_to_attrvals.json
+  word_dict_file: ../data/split_word/vocab/word_dict.json
+  vocab_dict_save_file: ../data/split_word/vocab/vocab_dict.json
+  vocab_txt_save_file: ../data/split_word/vocab/vocab.txt
+  data_dir: ../data/split_word
+  save_dir: ../data/equal_split_word
