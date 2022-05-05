@@ -3,6 +3,7 @@ import os
 import random
 import sys
 import torch
+import torch.nn as nn
 import numpy as np
 import logging
 from torch.utils.data import DataLoader
@@ -25,15 +26,11 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
-batch_size = 512
-max_epoch = 200
+batch_size = 2048
+max_epoch = 2000
 os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
 
-split_layers = 0
-fuse_layers = 12
-n_img_expand = 6
-
-root_dir = f"data/model_data/attr_simple_mlp_add_{args.fold}fold_e{max_epoch}_b{batch_size}_drop0/"
+root_dir = f"data/model_data/pretrain_clip2_attr_simple_mlp_{args.fold}fold_e{max_epoch}_b{batch_size}_drop0/"
 save_dir = f"{root_dir}/fold{args.fold_id}/"
 best_save_dir = f"{root_dir}best/"
 
@@ -56,7 +53,7 @@ logging.basicConfig(
 
 # adjust learning rate
 LR_SCHED = False
-lr = 1e-4
+lr = 1e-5
 min_lr = 5e-5
 warmup_epochs = 5
 
@@ -91,19 +88,10 @@ for file in input_file:
                     new_item["attr"] = attr_value
                     new_item["label"] = 1
                     all_items.append(new_item)
-
-                    new_item = {}
-                    new_item["feature"] = item["feature"]
-                    new_item["key"] = attr_key
-                    new_item["label"] = 0
-                    sample_attr_list = neg_attr_dict[attr_value]["similar_attr"]
-                    attr_value = random.sample(sample_attr_list, k=1)[0]
-                    new_item["attr"] = attr_value
-                    all_items.append(new_item)
-
-            # if len(all_items)>2000:
+            # if len(all_items) > 2000:
             #     break
 all_items = np.array(all_items)
+
 
 from dataset.keyattrmatch_dataset import AttrIdMatchDataset2, attr_id_match_collate_fn
 
@@ -112,11 +100,13 @@ collate_fn = attr_id_match_collate_fn
 # 划分训练集 测试集
 kf = KFold(n_splits=args.fold, shuffle=True, random_state=seed)
 kf.get_n_splits()
-for fold_id, (train_index, test_index) in enumerate(kf.split(all_items)):
+for fold_id, (train_index, val_index) in enumerate(kf.split(all_items)):
     if fold_id == args.fold_id:
+        logging.info(f"train attr_num:{len(train_index)}")
+        logging.info(f"val attr_num:{len(val_index)}")
         # dataset
         train_data = all_items[train_index]
-        val_data = all_items[test_index]
+        val_data = all_items[val_index]
 
         train_dataset = dataset(train_data, attr_to_id)
         val_dataset = dataset(val_data, attr_to_id)
@@ -141,16 +131,17 @@ for fold_id, (train_index, test_index) in enumerate(kf.split(all_items)):
         )
 
         # fuse model
-        from model.attr_mlp import ATTR_ID_MLP3
+        from model.attr_mlp import CLIP_ATTR_ID_MLP
 
-        model = ATTR_ID_MLP3()
+        model = CLIP_ATTR_ID_MLP()
         model.cuda()
 
         # optimizer
         optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
         # loss
-        loss_fn = torch.nn.BCEWithLogitsLoss()
+        loss_img = nn.CrossEntropyLoss()
+        loss_attr = nn.CrossEntropyLoss()
 
         # evaluate
         @torch.no_grad()
@@ -158,31 +149,35 @@ for fold_id, (train_index, test_index) in enumerate(kf.split(all_items)):
             # 重置random种子
             random.seed(2022)
             model.eval()
-            correct = 0
-            total = 0
+            cumulative_loss = 0.0
+            num_elements = 0.0
             for batch in tqdm(val_dataloader):
                 images, attr_ids, labels, _ = batch
                 images = images.cuda()
                 attr_ids = attr_ids.cuda()
-                logits = model(images, attr_ids)
-                logits = logits.cpu()
+                image_features, attr_features, logit_scale = model(images, attr_ids)
 
-                logits = torch.sigmoid(logits)
-                logits[logits > 0.5] = 1
-                logits[logits <= 0.5] = 0
+                logit_scale = logit_scale.mean()
+                logits_per_image = logit_scale * image_features @ attr_features.t()
+                logits_per_attr = logit_scale * attr_features @ image_features.t()
+                ground_truth = torch.arange(len(logits_per_image)).long()
+                ground_truth = ground_truth.cuda(non_blocking=True)
 
-                correct += torch.sum(labels == logits)
-                total += len(labels)
+                total_loss = (
+                    loss_img(logits_per_image, ground_truth)
+                    + loss_attr(logits_per_attr, ground_truth)
+                ) / 2
 
-            acc = correct / total
-            return acc.item()
+                batch_size = len(images)
+                cumulative_loss += total_loss * batch_size
+                num_elements += batch_size
 
-        max_acc = 0
-        last_path = None
-        correct = 0
-        total = 0
+            return cumulative_loss / num_elements
+
+        max_eval_loss = np.inf
         for epoch in range(max_epoch):
             model.train()
+            total_loss_list = []
 
             for i, batch in enumerate(train_dataloader):
                 optimizer.zero_grad()
@@ -195,47 +190,42 @@ for fold_id, (train_index, test_index) in enumerate(kf.split(all_items)):
                 images = images.cuda()
                 attr_ids = attr_ids.cuda()
                 labels = labels.float().cuda()
-                logits = model(images, attr_ids)
 
-                # train acc
-                if (i + 1) % 200 == 0:
-                    train_acc = correct / total
-                    correct = 0
-                    total = 0
-                    if LR_SCHED:
-                        logging.info(
-                            "Epoch:[{}|{}], Acc:{:.2f}%, LR:{:.2e}".format(
-                                epoch, max_epoch, train_acc * 100, lr_now
-                            )
-                        )
-                    else:
-                        logging.info(
-                            "Epoch:[{}|{}], Acc:{:.2f}%".format(
-                                epoch, max_epoch, train_acc * 100
-                            )
-                        )
+                image_features, attr_features, logit_scale = model(images, attr_ids)
 
-                proba = torch.sigmoid(logits.cpu())
-                proba[proba > 0.5] = 1
-                proba[proba <= 0.5] = 0
-                correct += torch.sum(labels.cpu() == proba)
-                total += len(labels)
-                i += 1
+                logit_scale = logit_scale.mean()
+                logits_per_image = logit_scale * image_features @ attr_features.t()
+                logits_per_attr = logit_scale * attr_features @ image_features.t()
+                ground_truth = torch.arange(len(logits_per_image)).long()
+                ground_truth = ground_truth.cuda(non_blocking=True)
 
-                loss = loss_fn(logits, labels)
+                total_loss = (
+                    loss_img(logits_per_image, ground_truth)
+                    + loss_attr(logits_per_attr, ground_truth)
+                ) / 2
 
-                loss.backward()
+                total_loss_list.append(total_loss.mean().item())
+
+                total_loss.backward()
                 optimizer.step()
 
-            acc = evaluate(model, val_dataloader)
-            logging.info(f"eval acc: {acc}")
+                # train acc
+                if (i + 1) % 50 == 0:
+                    mean_loss = np.mean(total_loss_list)
+                    logging.info(
+                        "Epoch:[{}|{}], Training Loss:{:.2f}".format(
+                            epoch, max_epoch, mean_loss
+                        )
+                    )
 
-            if acc > max_acc:
-                max_acc = acc
-                save_path = save_dir + save_name + f"_{epoch}_{acc:.4f}.pth"
+            eval_loss = evaluate(model, val_dataloader)
+            logging.info(f"Eval Loss: {eval_loss}")
+
+            if eval_loss < max_eval_loss:
+                max_eval_loss = eval_loss
+                # save_path = save_dir + save_name + f"_{epoch}_{eval_loss:.4f}.pth"
                 best_save_path = best_save_dir + save_name + f"_fold{args.fold_id}.pth"
-                last_path = save_path
                 # torch.save(model.state_dict(), save_path)
                 torch.save(model.state_dict(), best_save_path)
 
-            logging.info(f"max acc: {max_acc}")
+            logging.info(f"Best Loss: {max_eval_loss}")
