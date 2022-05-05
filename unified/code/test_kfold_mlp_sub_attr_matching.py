@@ -2,7 +2,7 @@ import os
 import torch 
 import json
 import argparse 
-from model.attr_mlp import ATTR_ID_MLP
+from model.attr_mlp import ATTR_ID_MLP2
 from tqdm import tqdm 
 
 parser = argparse.ArgumentParser('train_attr', add_help=False)
@@ -19,7 +19,7 @@ with open(attr_to_attrvals, 'r') as f:
     attr_to_attrvals = json.load(f)
 
 attr_to_id = 'data/tmp_data/equal_processed_data/attr_to_id.json'
-save_dir = f'data/model_data/attr_mlp_5fold_e100_b512_drop0'
+save_dir = 'data/model_data/attr_simple_mlp_5fold_e200_b512_drop0/best'
 
 
 with open(attr_to_id, 'r') as f:
@@ -29,8 +29,9 @@ with open(attr_to_id, 'r') as f:
 # 生成属性to to
 models = []
 for fold in range(args.fold):
-    model = ATTR_ID_MLP()
-    model_checkpoint_path = os.path.join(save_dir, f"fold{fold}/attr_model.pth")
+    model = ATTR_ID_MLP2()
+    model_checkpoint_path = os.path.join(save_dir, f"attr_model_fold{fold}.pth")
+    # model_checkpoint_path = os.path.join(save_dir, f"fold{fold}/attr_model.pth")
     model_checkpoint = torch.load(model_checkpoint_path)
     model.load_state_dict(model_checkpoint)
     model.cuda()

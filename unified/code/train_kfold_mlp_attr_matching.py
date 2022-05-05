@@ -1,4 +1,3 @@
-from enum import EnumMeta
 import json
 import os
 import random
@@ -12,6 +11,7 @@ from utils.lr_sched import adjust_learning_rate
 
 import argparse 
 parser = argparse.ArgumentParser('train_attr', add_help=False)
+parser.add_argument('--gpus', default='0', type=str)
 parser.add_argument('--fold', default=5, type=int)
 parser.add_argument('--fold_id', default=0, type=int)
 args = parser.parse_args()   
@@ -22,18 +22,20 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
-gpus = str(args.fold_id)
 batch_size = 512
-max_epoch = 100
-os.environ['CUDA_VISIBLE_DEVICES'] = gpus
+max_epoch = 200
+os.environ['CUDA_VISIBLE_DEVICES'] = args.gpus
 
 split_layers = 0
 fuse_layers = 12
 n_img_expand = 6
 
-save_dir = f'data/model_data/attr_mlp_{args.fold}fold_e{max_epoch}_b{batch_size}_drop0/fold{args.fold_id}/'
+save_dir = f'data/model_data/attr_simple_mlp_add_{args.fold}fold_e{max_epoch}_b{batch_size}_drop0/fold{args.fold_id}/'
+best_save_dir = f'data/model_data/attr_simple_mlp_{args.fold}fold_e{max_epoch}_b{batch_size}_drop0/best/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
+if not os.path.exists(best_save_dir):
+    os.makedirs(best_save_dir)
 save_name = 'attr_model'
 
 # adjust learning rate
@@ -121,8 +123,8 @@ for fold_id, (train_index, test_index) in enumerate(kf.split(all_items)) :
             )
 
         # fuse model
-        from model.attr_mlp import ATTR_ID_MLP
-        model = ATTR_ID_MLP(dropout=0.5)
+        from model.attr_mlp import ATTR_ID_MLP3
+        model = ATTR_ID_MLP3()
         model.cuda()
 
         # optimizer 
@@ -204,7 +206,7 @@ for fold_id, (train_index, test_index) in enumerate(kf.split(all_items)) :
             if acc > max_acc:
                 max_acc = acc
                 save_path = save_dir + save_name + f'_{epoch}_{acc:.4f}.pth'
-                best_save_path = save_dir + save_name + '.pth'
+                best_save_path = best_save_dir+save_name + f'_fold{args.fold_id}.pth'
                 last_path = save_path
                 torch.save(model.state_dict(), save_path)
                 torch.save(model.state_dict(), best_save_path)
