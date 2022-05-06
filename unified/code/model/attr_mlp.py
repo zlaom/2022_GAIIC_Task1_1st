@@ -135,6 +135,54 @@ class AttrIdClassMLP(nn.Module):
         return logits
 
 
+class AttrIdDistinguishMLP(nn.Module):
+    def __init__(self, attr_num=54, ids_num=2, image_dim=2048, dropout=0):
+        super().__init__()
+        self.image_dropout = nn.Dropout(dropout)
+        self.attr_id_emb = nn.Embedding(attr_num, image_dim)
+
+        self.image_linear = nn.Sequential(
+            nn.Dropout(dropout),
+            nn.Linear(image_dim, image_dim // 2),
+            nn.ReLU(),
+            nn.LayerNorm(image_dim // 2),
+            nn.Linear(image_dim // 2, image_dim // 2),
+            nn.ReLU(),
+            nn.LayerNorm(image_dim // 2),
+        )
+
+        self.id_linear = nn.Sequential(
+            nn.Linear(image_dim, image_dim // 2),
+            nn.ReLU(),
+            nn.LayerNorm(image_dim // 2),
+            nn.Linear(image_dim // 2, image_dim // 2),
+            nn.ReLU(),
+            nn.LayerNorm(image_dim // 2),
+        )
+
+        self.dis_head = nn.Sequential(
+            nn.Linear(image_dim * 3 // 2, image_dim // 2),
+            nn.LayerNorm(image_dim // 2),
+            nn.ReLU(),
+            nn.Linear(image_dim // 2, 256),
+            nn.LayerNorm(256),
+            nn.ReLU(),
+            nn.Linear(256, ids_num),
+        )
+
+    def forward(self, image, ids):
+        # image B*2048
+        # ids B*id_num
+        image_featrue = self.image_linear(image)
+        ids_emb = self.attr_id_emb(ids)
+        id_featrue = self.id_linear(ids_emb)
+        B,N,_ = id_featrue.shape
+        id_featrue = id_featrue.reshape((B, -1))
+        featrue = torch.cat((image_featrue, id_featrue), dim=-1)
+        logits = self.dis_head(featrue)
+        return logits
+
+
 class CLIP_ATTR_ID_MLP(nn.Module):
     def __init__(self, attr_num=54, image_dim=2048, dropout=0):
         super().__init__()
