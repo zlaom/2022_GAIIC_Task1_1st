@@ -18,6 +18,7 @@ class FuseReplaceDataset(Dataset):
         words_list = []
         proba_list = []
         for word, n in vocab_dict.items():
+            # if word not in self.all_attr:
             words_list.append(word)
             proba_list.append(n)
         self.words_list = words_list 
@@ -48,29 +49,30 @@ class FuseReplaceDataset(Dataset):
         self.all_attr = all_attr
     
     # 标准fusereplace
-    # def __getitem__(self, idx):
-    #     item = self.items[idx]
-    #     image = torch.tensor(item['feature'])
-    #     split = item['vocab_split']
-    #     if self.is_train:
-    #         split = copy.deepcopy(split) # 要做拷贝，否则会改变self.items的值
-    #         label = 1
-    #         if random.random() < 0.6: # 替换，随机挑选一个词替换
-    #             label = 0
-    #             rep_idx = random.sample([i for i in range(len(split))], 1)
-    #             for i in rep_idx:
-    #                 word = split[i]
-    #                 if word in self.negative_dict: # 如果是关键属性则属性替换
-    #                     split[i] = random.sample(self.negative_dict[word], 1)[0]
-    #                 else:
-    #                     # new_word = np.random.choice(self.words_list, p=self.proba_list)
-    #                     new_word = np.random.choice(self.words_list)
-    #                     if new_word in split: # 之前忽略的一个bug
-    #                         label = 1
-    #                     else:
-    #                         split[i] = new_word
-    #     else:
-    #         label = item['match']['图文']
+    def __getitem__(self, idx):
+        item = self.items[idx]
+        image = torch.tensor(item['feature'])
+        split = item['vocab_split']
+        if self.is_train:
+            split = copy.deepcopy(split) # 要做拷贝，否则会改变self.items的值
+            label = 1
+            if random.random() < 0.55: # 替换，随机挑选一个词替换
+                label = 0
+                rep_idx = random.sample([i for i in range(len(split))], 1)
+                for i in rep_idx:
+                    word = split[i]
+                    if word in self.negative_dict: # 如果是关键属性则属性替换
+                        split[i] = random.sample(self.negative_dict[word], 1)[0]
+                    else:
+                        new_word = np.random.choice(self.words_list, p=self.proba_list)
+                        # if new_word in self.all_attr:
+                        #     new_word = random.sample(self.all_attr, 1)[0]
+                        if new_word in split: # 之前忽略的一个bug
+                            label = 1
+                        else:
+                            split[i] = new_word
+        else:
+            label = item['match']['图文']
 
 
     # 属性随机替换的fusereplace
@@ -97,29 +99,29 @@ class FuseReplaceDataset(Dataset):
 
 
     # 属性随机替换的fusereplace，提高替换同类型的概率
-    def __getitem__(self, idx):
-        item = self.items[idx]
-        image = torch.tensor(item['feature'])
-        split = item['vocab_split']
-        if self.is_train:
-            split = copy.deepcopy(split) # 要做拷贝，否则会改变self.items的值
-            label = 1
-            if random.random() < 0.55: # 替换，随机挑选一个词替换
-                rep_idx = random.sample([i for i in range(len(split))], 1)
-                for i in rep_idx:
-                    word = split[i]
-                    if word in self.all_attr: # 如果是关键属性则属性替换
-                        if random.random() < 0.5:
-                            new_word = np.random.choice(self.negative_dict[word])
-                        else:
-                            new_word = np.random.choice(self.all_attr)
-                    else:
-                        new_word = np.random.choice(self.words_list, p=self.proba_list)
-                    if new_word not in split: # 之前忽略的一个bug
-                        split[i] = new_word
-                        label = 0
-        else:
-            label = item['match']['图文']
+    # def __getitem__(self, idx):
+    #     item = self.items[idx]
+    #     image = torch.tensor(item['feature'])
+    #     split = item['vocab_split']
+    #     if self.is_train:
+    #         split = copy.deepcopy(split) # 要做拷贝，否则会改变self.items的值
+    #         label = 1
+    #         if random.random() < 0.55: # 替换，随机挑选一个词替换
+    #             rep_idx = random.sample([i for i in range(len(split))], 1)
+    #             for i in rep_idx:
+    #                 word = split[i]
+    #                 if word in self.all_attr: # 如果是关键属性则属性替换
+    #                     if random.random() < 0.5:
+    #                         new_word = np.random.choice(self.negative_dict[word])
+    #                     else:
+    #                         new_word = np.random.choice(self.all_attr)
+    #                 else:
+    #                     new_word = np.random.choice(self.words_list, p=self.proba_list)
+    #                 if new_word not in split: # 之前忽略的一个bug
+    #                     split[i] = new_word
+    #                     label = 0
+    #     else:
+    #         label = item['match']['图文']
 
         return image, split, label
 

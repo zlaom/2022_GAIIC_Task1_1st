@@ -16,7 +16,7 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
-gpus = '5'
+gpus = '6'
 batch_size = 128
 max_epoch = 300
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
@@ -25,10 +25,10 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = 'output/pretrain/title/FuseRep/'
+save_dir = 'output/pretrain/title/FuseRep_uniformquery/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
-save_name = '0l6lexp6_fuse0.55_coarse89588'
+save_name = '0l6lexp6_fuse0.55'
 
 # adjust learning rate
 LR_SCHED = True
@@ -37,10 +37,10 @@ min_lr = 5e-6
 warmup_epochs = 5
 
 LOAD_CKPT = False
-ckpt_file = 'output/split_pretrain/wordmatch/wordreplace/0l6lexp6/0.9270.pth'
+ckpt_file = ''
 
-train_file = 'data/equal_split_word/coarse89588.txt'
-# train_file = 'data/equal_split_word/title/fine40000.txt,data/equal_split_word/coarse89588.txt'
+# train_file = 'data/equal_split_word/coarse89588.txt'
+train_file = 'data/equal_split_word/title/fine40000.txt,data/equal_split_word/coarse89588.txt'
 # train_file = 'data/equal_split_word/title/fine40000.txt'
 val_file = 'data/equal_split_word/title/fine700.txt,data/equal_split_word/title/coarse1412.txt'
 # val_file = 'data/equal_split_word/title/fine9000.txt'

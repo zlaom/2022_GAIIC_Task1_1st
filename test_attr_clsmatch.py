@@ -19,7 +19,7 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
-gpus = '4'
+gpus = '0'
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 vocab_file = 'dataset/vocab/vocab.txt'
@@ -89,46 +89,28 @@ with open(test_file, 'r') as f:
         data = json.loads(data)
         image = data['feature']
         image = torch.tensor(image)
-        split = data['vocab_split']
-        
+        ori_split = data['vocab_split']
         key_attr = data['key_attr']
-        attr_mask = torch.zeros(20)
-        query_seq = {} # 整理query对应最后logits的顺序
+        
+        image = image[None, ].cuda()
+        match = {}
+        match['图文'] = 1
         for query, attr in key_attr.items():
-            if attr not in split:
+            if attr not in ori_split:
                 print(data['title'])
                 print(data['vocab_split'])
                 print(data['key_attr'])
                 break
-            attr_index = split.index(attr) # 先找到属性的位置
-            attr_mask[attr_index] = 1
-            query_seq[query] = attr_index
-            
-        attr_mask = attr_mask[None, ]
-        split = [split]
-        image = image[None, ].cuda()
-        
+            split = [[attr]]
+            with torch.no_grad():
+                logits = model(image, split)
+                logits = logits.squeeze(1).cpu()
 
-        with torch.no_grad():
-            logits, mask = model(image, split, word_match=True)
-            logits = logits.squeeze(2).cpu()
-            
-            _, W = logits.shape
-            attr_mask = attr_mask[:, :W]
-            
-            mask = mask.to(torch.bool)
-            attr_mask = attr_mask.to(torch.bool)
-            attr_mask = attr_mask[mask]
-            logits = logits[mask]
-
-            logits = torch.sigmoid(logits)
-            logits[logits>0.5] = 1
-            logits[logits<=0.5] = 0
-            
-        match = {}
-        match['图文'] = 1
-        for query, index in query_seq.items():
-            match[query] = int(logits[index])
+                logits = torch.sigmoid(logits)
+                logits[logits>0.5] = 1
+                logits[logits<=0.5] = 0
+                
+            match[query] = int(logits.item())
         
         ret = {"img_name": data["img_name"],
             "match": match

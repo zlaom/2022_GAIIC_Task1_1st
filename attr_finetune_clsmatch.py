@@ -16,19 +16,19 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
-gpus = '4'
+gpus = '1'
 batch_size = 128
-max_epoch = 300
+max_epoch = 100
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = 'output/finetune/attr/single_attr/fuse_replace/'
+save_dir = 'output/train/attr/single_attr/fuse_replace_0.8/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
-save_name = '0l6lexp6_full'
+save_name = '0l2lexp2'
 
 # adjust learning rate
 LR_SCHED = False
@@ -36,8 +36,8 @@ lr = 1e-5
 min_lr = 5e-6
 warmup_epochs = 5
 
-LOAD_CKPT = True
-ckpt_file = 'output/pretrain/attr/single_attr/fuse_replace/0l6lexp6_0.9146.pth'
+LOAD_CKPT = False
+ckpt_file = ''
 
 # train_file = 'data/equal_split_word/attr/fine10000.txt,data/equal_split_word/attr/coarse20000.txt'
 train_file = 'data/equal_split_word/fine45000.txt,data/equal_split_word/attr/coarse85000.txt'
@@ -52,8 +52,8 @@ with open(vocab_dict_file, 'r') as f:
 
 
 # dataset
-from dataset.attr_clsmatch_dataset import SingleAttrDataset, cls_collate_fn
-dataset = SingleAttrDataset
+from dataset.attr_clsmatch_dataset import SingleAttrDataset, FuseReplaceDataset, cls_collate_fn
+dataset = FuseReplaceDataset
 collate_fn = cls_collate_fn
 
 # data
