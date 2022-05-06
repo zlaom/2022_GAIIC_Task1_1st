@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class ATTR_ID_MLP(nn.Module):
+class SE_ATTR_ID_MLP(nn.Module):
     def __init__(self, attr_num=54, image_dim=2048, dropout=0):
         super().__init__()
         self.image_dropout = nn.Dropout(dropout)
@@ -30,7 +30,6 @@ class ATTR_ID_MLP(nn.Module):
             nn.Linear(image_dim, 256),
             nn.LayerNorm(256),
             nn.ReLU(),
-            nn.Dropout(),
             nn.Linear(256, 1),
         )
 

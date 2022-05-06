@@ -32,10 +32,8 @@ os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
 split_layers = 0
 fuse_layers = 12
 n_img_expand = 6
-similar_rate = 0.8
-dropout = 0.5
 
-root_dir = f"data/model_data/attr_simple_se_mlp_similar{similar_rate}_{args.fold}fold_e{max_epoch}_b{batch_size}_drop{dropout}/"
+root_dir = f"data/model_data/attr_simple_mlp_add_{args.fold}fold_e{max_epoch}_b{batch_size}_drop0/"
 save_dir = f"{root_dir}/fold{args.fold_id}/"
 best_save_dir = f"{root_dir}best/"
 
@@ -98,12 +96,7 @@ for file in input_file:
                     new_item["feature"] = item["feature"]
                     new_item["key"] = attr_key
                     new_item["label"] = 0
-
-                    if random.random() < similar_rate:  # 生成同类负例
-                        sample_attr_list = neg_attr_dict[attr_value]["similar_attr"]
-                    else:  # 生成异类负例
-                        sample_attr_list = neg_attr_dict[attr_value]["un_similar_attr"]
-
+                    sample_attr_list = neg_attr_dict[attr_value]["similar_attr"]
                     attr_value = random.sample(sample_attr_list, k=1)[0]
                     new_item["attr"] = attr_value
                     all_items.append(new_item)
@@ -148,9 +141,9 @@ for fold_id, (train_index, test_index) in enumerate(kf.split(all_items)):
         )
 
         # fuse model
-        from model.attr_mlp import SE_ATTR_ID_MLP
+        from model.attr_mlp import ATTR_ID_MLP3
 
-        model = SE_ATTR_ID_MLP(dropout=dropout)
+        model = ATTR_ID_MLP3()
         model.cuda()
 
         # optimizer
@@ -167,29 +160,24 @@ for fold_id, (train_index, test_index) in enumerate(kf.split(all_items)):
             model.eval()
             correct = 0
             total = 0
-            loss_list = []
             for batch in tqdm(val_dataloader):
                 images, attr_ids, labels, _ = batch
                 images = images.cuda()
                 attr_ids = attr_ids.cuda()
-                labels = labels.float().cuda()
                 logits = model(images, attr_ids)
+                logits = logits.cpu()
 
-                predict = torch.sigmoid(logits.cpu())
-                predict[predict > 0.5] = 1
-                predict[predict <= 0.5] = 0
+                logits = torch.sigmoid(logits)
+                logits[logits > 0.5] = 1
+                logits[logits <= 0.5] = 0
 
-                loss = loss_fn(logits, labels)
-                loss_list.append(loss.mean().cpu())
-
-                correct += torch.sum(labels.cpu() == predict)
+                correct += torch.sum(labels == logits)
                 total += len(labels)
 
             acc = correct / total
-            return acc.item(), np.mean(loss_list)
+            return acc.item()
 
         max_acc = 0
-        min_loss = np.inf
         last_path = None
         correct = 0
         total = 0
@@ -239,25 +227,15 @@ for fold_id, (train_index, test_index) in enumerate(kf.split(all_items)):
                 loss.backward()
                 optimizer.step()
 
-            evl_acc, evl_loss = evaluate(model, val_dataloader)
-            logging.info(f"eval acc: {evl_acc} loss:{evl_loss}")
+            acc = evaluate(model, val_dataloader)
+            logging.info(f"eval acc: {acc}")
 
-            if evl_acc > max_acc:
-                max_acc = evl_acc
-                # save_path = save_dir + save_name + f"_{epoch}_{acc:.4f}.pth"
-                best_save_path = (
-                    best_save_dir + save_name + f"_acc_fold{args.fold_id}.pth"
-                )
+            if acc > max_acc:
+                max_acc = acc
+                save_path = save_dir + save_name + f"_{epoch}_{acc:.4f}.pth"
+                best_save_path = best_save_dir + save_name + f"_fold{args.fold_id}.pth"
+                last_path = save_path
                 # torch.save(model.state_dict(), save_path)
                 torch.save(model.state_dict(), best_save_path)
 
-            if evl_loss < min_loss:
-                min_loss = evl_loss
-                # save_path = save_dir + save_name + f"_{epoch}_{acc:.4f}.pth"
-                best_save_path = (
-                    best_save_dir + save_name + f"_loss_fold{args.fold_id}.pth"
-                )
-                # torch.save(model.state_dict(), save_path)
-                torch.save(model.state_dict(), best_save_path)
-
-            logging.info(f"max acc: {max_acc} min loss: {min_loss}")
+            logging.info(f"max acc: {max_acc}")
