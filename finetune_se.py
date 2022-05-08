@@ -11,7 +11,7 @@ import argparse
 import numpy as np
 import scipy.io as scio
 import random
-os.environ["CUDA_VISIBLE_DEVICES"] = '2'
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import _LRScheduler
@@ -19,7 +19,7 @@ from torch.utils.tensorboard import SummaryWriter
 from utils.utils import warmup_lr_schedule, step_lr_schedule
 
 from data_pre.cls_match_dataset import ITMDataset, cls_collate_fn, ITMAttrDataset
-from models.fuse_model import FuseModel
+from models.split_model import SESplitBert
 from models.hero_bert.bert_config import BertConfig
 import tqdm
 
@@ -42,10 +42,10 @@ def set_seed_logger(dataset_cfg):
 
 
 def init_model(model_cfg, device):
-    split_config = BertConfig(num_hidden_layers=0)
-    fuse_config = BertConfig(num_hidden_layers=8)
-    model = FuseModel(split_config, fuse_config, 'data/split_word/vocab/vocab.txt', n_img_expand=6)
-    model.load_state_dict(torch.load('checkpoints/train/all_mean_split_43_h8_epd6_best_acc.pth'))
+    split_config = BertConfig(num_hidden_layers=6)
+    
+    model = SESplitBert(split_config, 'data/split_word/vocab/vocab.txt')
+    model.load_state_dict(torch.load('checkpoints/train/se_split_43_h6_best_acc.pth'))
     model = model.to(device)
     return model
 
@@ -155,7 +155,7 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
                      train_loss, val_loss,  acc)
         
         torch.save(model.state_dict(),
-                os.path.join(output_folder, 'seed_2_mean_h8_epd6_finetune_best_acc_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
+                os.path.join(output_folder, 'se_seed_2_h6_finetune_best_acc_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
         
 
 
@@ -166,7 +166,7 @@ if __name__ == '__main__':
     yaml_path = args.cfg_file
 
     with open(yaml_path, 'r', encoding='utf-8') as f:
-        config = yaml.load(f.read(), Loader=yaml.FullLoader)
+        config = yaml.load(f.read())
     model_cfg = config['MODEL']['ALL_MATCH']
     dataset_cfg = config['FINETUNE']
     optim_cfg = config['OPTIM']

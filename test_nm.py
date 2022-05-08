@@ -15,6 +15,7 @@ from models.gaiic_model import ITM_ATTR_MLP, ITM_ALL_CAT_Model, ITM_ALL_Model
 import sys
 import codecs
 sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
+
 if __name__ == '__main__':
     
     parser = argparse.ArgumentParser(description='Feature Compression Reconstruction')
@@ -29,7 +30,7 @@ if __name__ == '__main__':
     attr_path = test_config['ATTR_PATH']
     output_path = test_config['OUT_PATH']
     os.makedirs(output_path.split('/')[0], exist_ok=True)
-    
+   
     # 属性匹配的model
     attr_model_path = test_config['ATTR_CHECKPOINT_PATH']
     attr_model = ITM_ATTR_MLP()

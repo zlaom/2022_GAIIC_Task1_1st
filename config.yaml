@@ -45,7 +45,7 @@ FINETUNE:
   DATA_PATH_2: ./data/new_fine.txt
   ATTR_PATH: ./data/attr_to_attrvals.json
   OUT_PATH: checkpoints/
-  EPOCHS: 14
+  EPOCHS: 20
   RATIO: 0.8
   SHUFFLE: FALSE
   SEED: 2

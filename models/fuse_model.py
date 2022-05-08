@@ -7,6 +7,7 @@ from models.hero_bert.tokenizer import Tokenizer
 from einops import rearrange, repeat
 
 
+
 class FuseModel(nn.Module):
     def __init__(self, split_config, fuse_config, vocab_file, img_dim=2048, n_img_expand=8):
         super().__init__()
@@ -22,7 +23,7 @@ class FuseModel(nn.Module):
             nn.LayerNorm(fuse_config.hidden_size * n_img_expand)
         )
         
-        self.head = nn.Linear(fuse_config.hidden_size*2 , 2)
+        self.head = nn.Linear(fuse_config.hidden_size * 2 , 2)
         # self.head = nn.Linear(fuse_config.hidden_size*2, 2)
         
 
@@ -57,7 +58,6 @@ class FuseModel(nn.Module):
         cls_embedding = fuse_output[:, 0, :]
         mean_embedding = torch.mean(fuse_output[:, 1:, :], dim=1)
         final_embdding = torch.cat([cls_embedding,  mean_embedding], dim=-1)
-        
         x = self.head(final_embdding)
         return x
 

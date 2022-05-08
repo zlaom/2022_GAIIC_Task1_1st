@@ -11,14 +11,14 @@ import argparse
 import numpy as np
 import scipy.io as scio
 import random
-os.environ["CUDA_VISIBLE_DEVICES"] = '3'
+os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.tensorboard import SummaryWriter
 from utils.utils import warmup_lr_schedule, step_lr_schedule, cosine_lr_schedule
 
-from data_pre.cls_match_dataset import FuseReplaceDataset, cls_collate_fn, FuseReplaceAttrDataset
+from data_pre.cls_match_dataset import FuseReplaceDataset, cls_collate_fn, FuseAttrReplaceDataset
 from models.fuse_model import FuseModel
 from models.hero_bert.bert_config import BertConfig
 import tqdm
@@ -51,8 +51,8 @@ def init_model(model_cfg, device):
 
 def get_dataloader(dataset_cfg):
     
-    train_path = './data/equal_split_word/title/43_fine40000.txt,./data/equal_split_word/coarse89588.txt'
-    val_path = './data/equal_split_word/title/43_fine700.txt,./data/equal_split_word/title/43_coarse1412.txt'    
+    train_path = './data/equal_split_word/title/order_fine40000.txt,./data/equal_split_word/coarse89588.txt'
+    val_path = './data/equal_split_word/title/order_fine700.txt,./data/equal_split_word/title/order_coarse1412.txt'    
     attr_dict_path = './data/equal_processed_data/attr_to_attrvals.json'
     vocab_dict_path = './data/split_word/vocab/vocab_dict.json'
     with open(vocab_dict_path, 'r') as f:
@@ -67,7 +67,7 @@ def get_dataloader(dataset_cfg):
         val_dataset, batch_size=dataset_cfg['VAL_BATCH'], shuffle=False,
         num_workers=dataset_cfg['NUM_WORKERS'], drop_last=False, pin_memory=True, collate_fn=cls_collate_fn)
 
-    return train_loader, val_loader, 139588, 2124
+    return train_loader, val_loader, len(train_dataset.items), len(val_dataset.items)
 
 
 def train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn, device):
@@ -161,11 +161,11 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
         if acc > best_acc:
             best_acc = acc
             torch.save(model.state_dict(),
-                    os.path.join(output_folder, 'split_43_h12_epd6_mean_best_acc.pth'))
+                    os.path.join(output_folder, 'mean_split_order_h8_epd6_best_acc.pth'))
         if best_loss > val_loss:
             best_loss = val_loss
             torch.save(model.state_dict(),
-                    os.path.join(output_folder, 'split_43_h12_epd6_mean_best_loss.pth'))
+                    os.path.join(output_folder, 'mean_split_order_h8_epd6_best_loss.pth'))
         
         logging.info(' best acc is %f   |   best loss is %f', best_acc, best_loss)
         
@@ -178,7 +178,7 @@ if __name__ == '__main__':
     yaml_path = args.cfg_file
 
     with open(yaml_path, 'r', encoding='utf-8') as f:
-        config = yaml.load(f.read(), Loader=yaml.FullLoader)
+        config = yaml.load(f.read())
     model_cfg = config['MODEL']['ALL_MATCH']
     dataset_cfg = config['ALL_TRAIN']
     optim_cfg = config['OPTIM']

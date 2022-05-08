@@ -8,7 +8,7 @@ seed_num = 2022
 np.random.seed(seed_num)
 
 seed_num = 'order'
-yaml_path = '../new_config.yaml'
+yaml_path = '../new_config_1.yaml'
 with open(yaml_path, 'r', encoding='utf-8') as f:
     config = yaml.load(f.read(), Loader=yaml.FullLoader)
     save_dir = config['data_processed_3']['save_dir']

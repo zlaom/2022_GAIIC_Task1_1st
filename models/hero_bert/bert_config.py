@@ -7,7 +7,7 @@ class BertConfig():
     '''
     def __init__(
         self,
-        vocab_size=447,
+        vocab_size=480,
         hidden_size=768,
         num_hidden_layers=6,
         num_attention_heads=12,

@@ -3,7 +3,7 @@ import torch.nn as nn
 from models.split_bert.split_bert import SplitBertModel
 from models.hero_bert.tokenizer import Tokenizer
 
-class PretrainSplitBert(nn.Module):
+class SESplitBert(nn.Module):
     def __init__(self, config, vocab_file):
         super().__init__()
         self.bert = SplitBertModel(config)
@@ -12,30 +12,45 @@ class PretrainSplitBert(nn.Module):
         img_dim = 2048
         bert_dim = config.hidden_size
         self.image_encoder = nn.Sequential(
-            nn.Linear(img_dim, img_dim),
-            nn.LayerNorm(img_dim)
+            nn.Linear(img_dim, bert_dim),
+            nn.LayerNorm(bert_dim)
         )
-        self.classifier = nn.Sequential(
-            nn.Linear(bert_dim + img_dim, bert_dim),
-            nn.LayerNorm(bert_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(bert_dim, 1)
+
+        self.image_wsa = nn.Sequential(
+            nn.Linear(bert_dim * 2, bert_dim),
+            nn.BatchNorm1d(bert_dim),
+            nn.Sigmoid() # change 
+        )
+        self.text_wsa = nn.Sequential(
+            nn.Linear(bert_dim * 2, bert_dim),
+            nn.BatchNorm1d(bert_dim),
+            nn.Sigmoid()
+        )
+        
+        self.itm_head = nn.Sequential(
+            nn.Linear(bert_dim, 256),
+            nn.LayerNorm(256),
+            nn.ReLU(),
+            nn.Dropout(),
+            nn.Linear(256, 2),
         )
         
 
-    def forward(self, image_features, splits): # 注意splits需要为二维列表
-        image_features = self.image_encoder(image_features)
+    def forward(self, image, splits): # 注意splits需要为二维列表
+        image = self.image_encoder(image)
         tokens = self.tokenizer(splits)
         
         input_ids = tokens['input_ids'].cuda()
         attention_mask = tokens['attention_mask'].cuda()
         
-        sequence_output = self.bert(input_ids=input_ids, attention_mask=attention_mask)[0]
-        
-        seq_len = sequence_output.shape[1]
-        image_features = image_features[:, None, :].repeat(1, seq_len, 1)
+        text = self.bert(input_ids=input_ids, attention_mask=attention_mask)[0]
+        text = text[:, 0, :]
+        features = torch.cat((image, text), dim=-1)
+        image = torch.nn.functional.normalize(image, p=2, dim=-1)
+        text = torch.nn.functional.normalize(text, p=2, dim=-1)
+        image_w = self.image_wsa(features)
+        text_w = self.text_wsa(features)
+        fusion_feature = image * image_w + text * text_w
 
-        features = torch.cat([image_features, sequence_output], dim=-1)
-
-        x = self.classifier(features)
-        return x, attention_mask
+        logits = self.itm_head(fusion_feature)
+        return logits
