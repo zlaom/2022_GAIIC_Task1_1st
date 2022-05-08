@@ -16,8 +16,8 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
-gpus = '5'
-batch_size = 1
+gpus = '6'
+batch_size = 128
 max_epoch = 300
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
@@ -25,7 +25,7 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = 'output/pretrain/title/FuseRep_New/'
+save_dir = 'output/pretrain/title/FuseRep_twowords/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = '0l6lexp6_fuse0.55'
@@ -39,22 +39,22 @@ warmup_epochs = 5
 LOAD_CKPT = False
 ckpt_file = ''
 
-# # train_file = 'data/equal_split_word/coarse89588.txt'
-# train_file = 'data/equal_split_word/title/fine40000.txt,data/equal_split_word/coarse89588.txt'
-# # train_file = 'data/equal_split_word/title/fine40000.txt'
-# val_file = 'data/equal_split_word/title/fine700.txt,data/equal_split_word/title/coarse1412.txt'
-# # val_file = 'data/equal_split_word/title/fine9000.txt'
-# # train_file = 'data/equal_split_word/fine45000.txt'
-# vocab_dict_file = 'dataset/vocab/vocab_dict.json'
-# vocab_file = 'dataset/vocab/vocab.txt'
-# attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
+# train_file = 'data/equal_split_word/coarse89588.txt'
+train_file = 'data/equal_split_word/title/fine40000.txt,data/equal_split_word/coarse89588.txt'
+# train_file = 'data/equal_split_word/title/fine40000.txt'
+val_file = 'data/equal_split_word/title/fine700.txt,data/equal_split_word/title/coarse1412.txt'
+# val_file = 'data/equal_split_word/title/fine9000.txt'
+# train_file = 'data/equal_split_word/fine45000.txt'
+vocab_dict_file = 'dataset/vocab/vocab_dict.json'
+vocab_file = 'dataset/vocab/vocab.txt'
+attr_dict_file = 'data/equal_processed_data/attr_to_attrvals.json'
 
-train_file = 'data/new_data/divided/title/fine40000.txt'
+# # train_file = 'data/new_data/divided/title/fine40000.txt'
 # train_file = 'data/new_data/divided/title/fine40000.txt,data/new_data/equal_split_word/coarse89588.txt'
-val_file = 'data/new_data/divided/title/fine700.txt,data/new_data/divided/title/coarse1412.txt'
-vocab_dict_file = 'data/new_data/vocab/vocab_dict.json'
-vocab_file = 'data/new_data/vocab/vocab.txt'
-attr_dict_file = 'data/new_data/equal_processed_data/attr_to_attrvals.json'
+# val_file = 'data/new_data/divided/title/fine700.txt,data/new_data/divided/title/coarse1412.txt'
+# vocab_dict_file = 'data/new_data/vocab/vocab_dict.json'
+# vocab_file = 'data/new_data/vocab/vocab.txt'
+# attr_dict_file = 'data/new_data/equal_processed_data/attr_to_attrvals.json'
 
 with open(vocab_dict_file, 'r') as f:
     vocab_dict = json.load(f)

@@ -49,30 +49,30 @@ class FuseReplaceDataset(Dataset):
         self.all_attr = all_attr
     
     # 标准fusereplace
-    def __getitem__(self, idx):
-        item = self.items[idx]
-        image = torch.tensor(item['feature'])
-        split = item['vocab_split']
-        if self.is_train:
-            split = copy.deepcopy(split) # 要做拷贝，否则会改变self.items的值
-            label = 1
-            if random.random() < 0.55: # 替换，随机挑选一个词替换
-                label = 0
-                rep_idx = random.sample([i for i in range(len(split))], 1)
-                for i in rep_idx:
-                    word = split[i]
-                    if word in self.negative_dict: # 如果是关键属性则属性替换
-                        split[i] = random.sample(self.negative_dict[word], 1)[0]
-                    else:
-                        new_word = np.random.choice(self.words_list, p=self.proba_list)
-                        # if new_word in self.all_attr:
-                        #     new_word = random.sample(self.all_attr, 1)[0]
-                        if new_word in split: # 之前忽略的一个bug
-                            label = 1
-                        else:
-                            split[i] = new_word
-        else:
-            label = item['match']['图文']
+    # def __getitem__(self, idx):
+    #     item = self.items[idx]
+    #     image = torch.tensor(item['feature'])
+    #     split = item['vocab_split']
+    #     if self.is_train:
+    #         split = copy.deepcopy(split) # 要做拷贝，否则会改变self.items的值
+    #         label = 1
+    #         if random.random() < 0.55: # 替换，随机挑选一个词替换
+    #             label = 0
+    #             rep_idx = random.sample([i for i in range(len(split))], 1)
+    #             for i in rep_idx:
+    #                 word = split[i]
+    #                 if word in self.negative_dict: # 如果是关键属性则属性替换
+    #                     split[i] = random.sample(self.negative_dict[word], 1)[0]
+    #                 else:
+    #                     new_word = np.random.choice(self.words_list, p=self.proba_list)
+    #                     # if new_word in self.all_attr:
+    #                     #     new_word = random.sample(self.all_attr, 1)[0]
+    #                     if new_word in split: # 之前忽略的一个bug
+    #                         label = 1
+    #                     else:
+    #                         split[i] = new_word
+    #     else:
+    #         label = item['match']['图文']
 
 
     # 去重，去掉同query的替换词
@@ -107,37 +107,37 @@ class FuseReplaceDataset(Dataset):
             
 
     # 可能替换多个词
-    # def __getitem__(self, idx):
-    #     item = self.items[idx]
-    #     image = torch.tensor(item['feature'])
-    #     split = item['vocab_split']
-    #     if self.is_train:
-    #         split = copy.deepcopy(split) # 要做拷贝，否则会改变self.items的值
-    #         label = 1
-    #         if random.random() < 0.55: # 替换，随机挑选一个词替换
-    #             label = 0
-    #             rep_list = [1,2]
-    #             rep_proba = [0.5, 0.5]
-    #             rep_num = np.random.choice(rep_list, p=rep_proba)
-    #             # rep_num = 2
-    #             if len(split) >= rep_num:
-    #                 rep_idx = random.sample([i for i in range(len(split))], rep_num)
-    #             else:
-    #                 rep_idx = random.sample([i for i in range(len(split))], 1)
-    #             for i in rep_idx:
-    #                 word = split[i]
-    #                 if word in self.negative_dict: # 如果是关键属性则属性替换
-    #                     split[i] = random.sample(self.negative_dict[word], 1)[0]
-    #                 else:
-    #                     new_word = np.random.choice(self.words_list, p=self.proba_list)
-    #                     # if new_word in self.all_attr:
-    #                     #     new_word = random.sample(self.all_attr, 1)[0]
-    #                     if new_word in split: # 之前忽略的一个bug
-    #                         label = 1
-    #                     else:
-    #                         split[i] = new_word
-    #     else:
-    #         label = item['match']['图文']
+    def __getitem__(self, idx):
+        item = self.items[idx]
+        image = torch.tensor(item['feature'])
+        split = item['vocab_split']
+        if self.is_train:
+            split = copy.deepcopy(split) # 要做拷贝，否则会改变self.items的值
+            label = 1
+            if random.random() < 0.55: # 替换，随机挑选一个词替换
+                label = 0
+                rep_list = [1,2]
+                rep_proba = [0.5, 0.5]
+                rep_num = np.random.choice(rep_list, p=rep_proba)
+                # rep_num = 2
+                if len(split) >= rep_num:
+                    rep_idx = random.sample([i for i in range(len(split))], rep_num)
+                else:
+                    rep_idx = random.sample([i for i in range(len(split))], 1)
+                for i in rep_idx:
+                    word = split[i]
+                    if word in self.negative_dict: # 如果是关键属性则属性替换
+                        split[i] = random.sample(self.negative_dict[word], 1)[0]
+                    else:
+                        new_word = np.random.choice(self.words_list, p=self.proba_list)
+                        # if new_word in self.all_attr:
+                        #     new_word = random.sample(self.all_attr, 1)[0]
+                        if new_word in split: # 之前忽略的一个bug
+                            label = 1
+                        else:
+                            split[i] = new_word
+        else:
+            label = item['match']['图文']
     
     
     
