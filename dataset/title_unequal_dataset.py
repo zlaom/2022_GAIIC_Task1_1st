@@ -49,7 +49,7 @@ class FuseReplaceDataset(Dataset):
         if self.is_train:
             split = copy.deepcopy(split) # 要做拷贝，否则会改变self.items的值
             label = 1
-            if random.random() < 0.7: # 替换，随机挑选一个词替换 0.55
+            if random.random() < 0.6: # 替换，随机挑选一个词替换 0.55
                 label = 0
                 rep_idx = random.sample([i for i in range(len(split))], 1)
                 for i in rep_idx:

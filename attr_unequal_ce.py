@@ -6,11 +6,9 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm 
 
 from model.bert.bertconfig import BertConfig
-from model.fusemodel import FuseModel
+from model.fusemodel import FuseModelCE
 
 from utils.lr_sched import adjust_learning_rate
-from torch.cuda import amp 
-ENABLE_AMP = True
 
 # fix the seed for reproducibility
 seed = 0
@@ -18,7 +16,7 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
-gpus = '3'
+gpus = '1'
 batch_size = 128
 max_epoch = 100
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
@@ -27,7 +25,7 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = 'output/train/attr/unequal_posembed/dp0.1_realposembed/'
+save_dir = 'output/train/attr/unequal_CEloss/baseline/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = '0l6lexp6'
@@ -44,7 +42,7 @@ ckpt_file = ''
 
 # train_file = 'data/new_data/divided/attr/fine45000.txt'
 train_file = 'data/new_data/divided/attr/fine45000.txt,data/new_data/equal_split_word/coarse89588.txt'
-val_file = 'data/new_data/divided/attr/val/fine5000.txt'
+val_file = 'data/new_data/divided/attr/fine5000.txt'
 
 vocab_dict_file = 'data/new_data/vocab/vocab_dict.json'
 vocab_file = 'data/new_data/vocab/vocab.txt'
@@ -86,7 +84,7 @@ val_dataloader = DataLoader(
 # model
 split_config = BertConfig(num_hidden_layers=split_layers)
 fuse_config = BertConfig(num_hidden_layers=fuse_layers)
-model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
+model = FuseModelCE(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
 if LOAD_CKPT:
     model.load_state_dict(torch.load(ckpt_file))
 model.cuda()
@@ -95,10 +93,7 @@ model.cuda()
 optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
 # loss
-loss_fn = torch.nn.BCEWithLogitsLoss()
-
-# amp
-scaler = amp.GradScaler(enabled=ENABLE_AMP)
+loss_fn = torch.nn.CrossEntropyLoss()
 
 # evaluate 
 @torch.no_grad()
@@ -110,18 +105,12 @@ def evaluate(model, val_dataloader):
     for batch in tqdm(val_dataloader):
         images, splits, labels = batch 
         images = images.cuda()
+        logits = model(images, splits)
         
-        with amp.autocast(enabled=ENABLE_AMP):
-            logits = model(images, splits)
-            logits = logits.squeeze(1)
-            n_loss = loss_fn(logits, labels.float().cuda())
-        
-        total_loss += n_loss.cpu()
-        logits = torch.sigmoid(logits.cpu().float())
-        logits[logits>0.5] = 1
-        logits[logits<=0.5] = 0
-        
-        correct += torch.sum(labels == logits)
+        logits = logits.cpu()
+        total_loss += loss_fn(logits, labels)
+        _, predicted = torch.max(logits, -1)
+        correct += torch.sum(labels == predicted)
         total += len(labels)
         
     acc = correct / total
@@ -145,18 +134,10 @@ for epoch in range(max_epoch):
         images, splits, labels = batch 
         
         images = images.cuda()
-        labels = labels.float().cuda()
+        labels = labels.cuda()
         
-        with amp.autocast(enabled=ENABLE_AMP):
-            logits = model(images, splits)
-            logits = logits.squeeze(1)
-            loss = loss_fn(logits, labels)
-        
-        # loss scaler
-        scaler.scale(loss).backward()
-        scaler.step(optimizer)
-        scaler.update()
-        
+        logits = model(images, splits)
+
         # train acc
         if (i+1)%200 == 0:
             train_acc = correct / total
@@ -166,19 +147,15 @@ for epoch in range(max_epoch):
                 print('Epoch:[{}|{}], Acc:{:.2f}%, LR:{:.2e}'.format(epoch, max_epoch, train_acc*100, lr_now))
             else:
                 print('Epoch:[{}|{}], Acc:{:.2f}%'.format(epoch, max_epoch, train_acc*100))
-        proba = torch.sigmoid(logits.float().cpu())
-        proba[proba>0.5] = 1
-        proba[proba<=0.5] = 0
-        new_labels = labels.cpu().clone()
-        new_labels[new_labels!=0] = 1
-        correct += torch.sum(new_labels == proba)
+        _, predicted = torch.max(logits.cpu(), -1)
+        correct += torch.sum(labels.cpu() == predicted)
         total += len(labels)
         i += 1
         
+        loss = loss_fn(logits, labels)
         
-        
-        # loss.backward()
-        # optimizer.step()
+        loss.backward()
+        optimizer.step()
         
     acc, loss = evaluate(model, val_dataloader)
     print('Acc:{:.2f}%, Loss:{:.5f}'.format(acc*100, loss))
@@ -195,6 +172,6 @@ for epoch in range(max_epoch):
         min_loss = loss
         if loss_last_path:
             os.remove(loss_last_path)
-        save_path = save_dir + save_name + '_'  + '{:.5f}'.format(loss)+'.pth'
+        save_path = save_dir + save_name + '_'  + '{:.4f}'.format(round(loss, 6))+'.pth'
         loss_last_path = save_path
         torch.save(model.state_dict(), save_path)

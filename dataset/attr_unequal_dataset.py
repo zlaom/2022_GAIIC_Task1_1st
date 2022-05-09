@@ -1,4 +1,3 @@
-from xml.dom.minidom import Attr
 import torch 
 import json 
 from tqdm import tqdm 
@@ -13,8 +12,6 @@ class AttrClsMatchDataset(Dataset):
         with open(relation_dict_file, 'r') as f:
             relation_dict = json.load(f)
             
-        # for attr, dict in relation_dict.items():
-        #     dict['similar_attr'] = np.array(dict['similar_attr'], dtype='object')
         self.relation_dict = relation_dict
         self.all_list = list(relation_dict.keys())
         # 取出所有可替换的词及出现的次数比例
@@ -48,29 +45,123 @@ class SingleAttrDataset(AttrClsMatchDataset):
         image = torch.tensor(item['feature'])
         key_attr = item['key_attr']
         
-        # 随机选一个属性
-        query = np.random.choice(list(key_attr.keys()))
-        attr = key_attr[query]
+        if self.is_train:
+            # 随机选一个属性
+            query = np.random.choice(list(key_attr.keys()))
+            attr = key_attr[query]
 
-        if random.random() < 0.5: # 替换，随机挑选一个词替换
-            label = 0
-            # attr_list = np.random.choice(self.relation_dict[attr]['similar_attr'])
-            attr_list = random.sample(self.relation_dict[attr]['similar_attr'], 1)[0]
-            if len(attr_list) == 1:
-                split = attr_list
-            else:
-                attr = random.sample(attr_list, 1)[0]
+            if random.random() < 0.5: # 替换，随机挑选一个词替换
+                label = 0
+                attr_list = random.sample(self.relation_dict[attr]['similar_attr'], 1)[0]
+                if len(attr_list) == 1:
+                    split = attr_list
+                else:
+                    attr = random.sample(attr_list, 1)[0]
+                    split = [attr]
+            else: 
+                label = 1
                 split = [attr]
-        else: 
-            label = 1
+                # if self.is_train:
+                #     if self.relation_dict[attr]['equal_attr']:
+                #         if random.random() < 0.1: # 正例增强
+                #             label = 1
+                #             split = random.sample(self.relation_dict[attr]['equal_attr'], 1)
+        else:
+            (query, attr), = key_attr.items()
             split = [attr]
-            if self.is_train:
-                if self.relation_dict[attr]['equal_attr']:
-                    if random.random() < 0.1: # 正例增强
-                        label = 1
-                        split = random.sample(self.relation_dict[attr]['equal_attr'], 1)
+            label = item['match'][query]
             
         return image, split, label
+
+
+
+class AttrSequenceDataset(Dataset):
+    def __init__(self, input_filename, relation_dict_file, vocab_dict, is_train):
+        self.is_train = is_train
+        with open(relation_dict_file, 'r') as f:
+            relation_dict = json.load(f)
+            
+        # for attr, dict in relation_dict.items():
+        #     dict['similar_attr'] = np.array(dict['similar_attr'], dtype='object')
+        self.relation_dict = relation_dict
+        self.all_list = list(relation_dict.keys())
+        # 取出所有可替换的词及出现的次数比例
+        words_list = []
+        proba_list = []
+        for word, n in vocab_dict.items():
+            words_list.append(word)
+            proba_list.append(n)
+        self.words_list = words_list 
+        proba_list = np.array(proba_list)
+        self.proba_list = proba_list / np.sum(proba_list)
+        
+        
+        # 提取数据
+        self.items = []
+        for file in input_filename.split(','):
+            with open(file, 'r') as f:
+                for line in tqdm(f):
+                    item = json.loads(line)
+                    if self.is_train:
+                        if item['key_attr']: # 必须有属性
+                            for query, attr in item['key_attr'].items():
+                                new_item = copy.deepcopy(item)
+                                new_item['key_attr'] = attr
+                                self.items.append(new_item)
+                    else:
+                        self.items.append(item)
+        print(len(self.items))
+        
+    def __len__(self):
+        return len(self.items)
+        
+    def __getitem__(self, idx):
+        item = self.items[idx]
+        image = torch.tensor(item['feature'])
+        
+        if self.is_train:
+            # 随机选一个属性
+            attr = item['key_attr']
+
+            if random.random() < 0.5: # 替换，随机挑选一个词替换
+                label = 0
+                # attr_list = np.random.choice(self.relation_dict[attr]['similar_attr'])
+                attr_list = random.sample(self.relation_dict[attr]['similar_attr'], 1)[0]
+                if len(attr_list) == 1:
+                    split = attr_list
+                else:
+                    attr = random.sample(attr_list, 1)[0]
+                    split = [attr]
+            else: 
+                label = 1
+                split = [attr]
+                # if self.is_train:
+                #     if self.relation_dict[attr]['equal_attr']:
+                #         if random.random() < 0.25: # 正例增强
+                #             label = 0.8
+                #             split = random.sample(self.relation_dict[attr]['equal_attr'], 1)
+        else:
+            (query, attr), = item['key_attr'].items()
+            split = [attr]
+            label = item['match'][query]
+            
+        return image, split, label
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class FuseReplaceDataset(AttrClsMatchDataset):
