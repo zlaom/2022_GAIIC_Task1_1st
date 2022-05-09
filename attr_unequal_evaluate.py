@@ -16,7 +16,7 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
-gpus = '3'
+gpus = '0'
 batch_size = 128
 max_epoch = 100
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
@@ -25,7 +25,7 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-THRESH = 0.6
+THRESH = 0.5
 
 # adjust learning rate
 LR_SCHED = False
@@ -34,12 +34,13 @@ min_lr = 5e-6
 warmup_epochs = 5
 
 LOAD_CKPT = True
-ckpt_file = 'output/train/attr/unequal/baseline/0l6lexp6_0.9456.pth'
+ckpt_file = 'output/train/attr/posembed/dp0.3_attrseq_posaug0.25_soft0.8/0l6lexp6_0.9425.pth'
 
 
 # train_file = 'data/new_data/divided/attr/fine45000.txt'
 train_file = 'data/new_data/divided/attr/fine45000.txt,data/new_data/equal_split_word/coarse89588.txt'
-val_file = 'data/new_data/divided/attr/fine5000.txt'
+# val_file = 'data/new_data/divided/attr/val/fine5000.txt'
+val_file = 'data/new_data/divided/attr/val/fine5000_0.25posaug.txt'
 
 vocab_dict_file = 'data/new_data/vocab/vocab_dict.json'
 vocab_file = 'data/new_data/vocab/vocab.txt'

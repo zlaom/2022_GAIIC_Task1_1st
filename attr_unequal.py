@@ -12,31 +12,33 @@ from utils.lr_sched import adjust_learning_rate
 from torch.cuda import amp 
 ENABLE_AMP = True
 
+
 # fix the seed for reproducibility
 seed = 0
 torch.manual_seed(seed)
 np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
-gpus = '3'
+gpus = '0'
 batch_size = 128
-max_epoch = 100
+max_epoch = 50
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = 'output/train/attr/unequal_posembed/dp0.1_realposembed/'
+# save_dir = 'output/train/attr/posembed/dp0.3_attrseq_posaug0.25_soft0.9/'
+save_dir = 'output/train/attr/posembed/dp0.3_attrseq_lrsched/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = '0l6lexp6'
 
 # adjust learning rate
-LR_SCHED = False
-lr = 1e-5
+LR_SCHED = True
+lr = 1e-4
 min_lr = 5e-6
-warmup_epochs = 5
+warmup_epochs = 0
 
 LOAD_CKPT = False
 ckpt_file = ''
@@ -56,7 +58,7 @@ with open(vocab_dict_file, 'r') as f:
 
 # dataset
 from dataset.attr_unequal_dataset import SingleAttrDataset, AttrSequenceDataset, cls_collate_fn
-dataset = SingleAttrDataset
+dataset = AttrSequenceDataset
 collate_fn = cls_collate_fn
 
 # data

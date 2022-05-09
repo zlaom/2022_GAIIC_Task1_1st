@@ -122,7 +122,6 @@ class AttrSequenceDataset(Dataset):
         if self.is_train:
             # 随机选一个属性
             attr = item['key_attr']
-
             if random.random() < 0.5: # 替换，随机挑选一个词替换
                 label = 0
                 # attr_list = np.random.choice(self.relation_dict[attr]['similar_attr'])
@@ -135,11 +134,10 @@ class AttrSequenceDataset(Dataset):
             else: 
                 label = 1
                 split = [attr]
-                # if self.is_train:
-                #     if self.relation_dict[attr]['equal_attr']:
-                #         if random.random() < 0.25: # 正例增强
-                #             label = 0.8
-                #             split = random.sample(self.relation_dict[attr]['equal_attr'], 1)
+                # if self.relation_dict[attr]['equal_attr']:
+                #     if random.random() < 0.25: # 正例增强
+                #         label = 0.8
+                #         split = random.sample(self.relation_dict[attr]['equal_attr'], 1)
         else:
             (query, attr), = item['key_attr'].items()
             split = [attr]

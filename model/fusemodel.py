@@ -18,7 +18,7 @@ class FuseModel(nn.Module):
         self.pos_embedding = nn.Parameter(torch.randn(1, n_img_expand + 1, fuse_config.hidden_size))
         
         self.image_encoder = nn.Sequential(
-            nn.Dropout(0.1),
+            nn.Dropout(0.3),
             nn.Linear(img_dim, fuse_config.hidden_size * n_img_expand),
             nn.LayerNorm(fuse_config.hidden_size * n_img_expand)
         )
@@ -75,9 +75,10 @@ class FuseModelCE(nn.Module):
         self.fusebert = FuseBertModel(fuse_config)
         self.tokenizer = Tokenizer(vocab_file)
         self.cls_token = nn.Parameter(torch.randn(1, 1, fuse_config.hidden_size))
-        # self.pos_embedding = nn.Parameter(torch.randn(1, n_img_expand + 1, fuse_config.hidden_size))
+        self.pos_embedding = nn.Parameter(torch.randn(1, n_img_expand + 1, fuse_config.hidden_size))
         
         self.image_encoder = nn.Sequential(
+            nn.Dropout(0.3),
             nn.Linear(img_dim, fuse_config.hidden_size * n_img_expand),
             nn.LayerNorm(fuse_config.hidden_size * n_img_expand)
         )
@@ -102,13 +103,13 @@ class FuseModelCE(nn.Module):
         cls_tokens = repeat(self.cls_token, '1 N D -> B N D', B = B).cuda()
         # position embedding
         pos_embeded = torch.cat([cls_tokens, image_features], dim=1)
-        # pos_embeded += self.pos_embedding
+        pos_embeded += self.pos_embedding
         fuse_inputs_embeds = torch.cat([pos_embeded, sequence_output], dim=1)
         fuse_attention_mask = torch.cat([torch.ones(B, self.n_img_expand+1, dtype=int), 
                                          tokens['attention_mask']], dim=1).cuda()
-        fuse_token_type_ids = torch.cat([torch.zeros(B, self.n_img_expand+1, dtype=int),
-                                         torch.ones(B, split_seq_len, dtype=int)], dim=1).cuda()
-        # fuse_token_type_ids = None 
+        # fuse_token_type_ids = torch.cat([torch.zeros(B, self.n_img_expand+1, dtype=int),
+        #                                  torch.ones(B, split_seq_len, dtype=int)], dim=1).cuda()
+        fuse_token_type_ids = None 
         
         # fuse bert
         fuse_output = self.fusebert(inputs_embeds=fuse_inputs_embeds, 
@@ -121,7 +122,6 @@ class FuseModelCE(nn.Module):
             return x, attention_mask
         
         x = self.head(fuse_output[:,0,:])
-        # x = torch.softmax(x, dim=-1)
         return x
     
     

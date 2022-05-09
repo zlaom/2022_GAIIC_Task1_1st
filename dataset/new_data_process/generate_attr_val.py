@@ -15,7 +15,7 @@ val_file = 'data/new_data/divided/attr/fine5000.txt'
 vocab_dict_file = 'data/new_data/vocab/vocab_dict.json'
 vocab_file = 'data/new_data/vocab/vocab.txt'
 relation_dict_file = 'data/new_data/equal_processed_data/attr_relation_dict.json'
-save_file = 'data/new_data/divided/attr/val/fine5000.txt'
+save_file = 'data/new_data/divided/attr/val/fine5000_0.25posaug.txt'
 with open(relation_dict_file, 'r') as f:
     relation_dict = json.load(f)
     
@@ -40,7 +40,11 @@ with open(val_file, 'r') as f:
                 else: 
                     label = 1
                     split = [attr]
-                    
+                    if relation_dict[attr]['equal_attr']:
+                        if random.random() < 0.25: # 正例增强
+                            label = 1
+                            split = random.sample(relation_dict[attr]['equal_attr'], 1)
+                            
                 key_attr[query] = split[0]
                 match[query] = label
                 new_item['key_attr'] = key_attr

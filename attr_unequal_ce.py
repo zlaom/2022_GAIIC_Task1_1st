@@ -25,7 +25,7 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = 'output/train/attr/unequal_CEloss/baseline/'
+save_dir = 'output/train/attr/posembed/dp0.3_attrseq_CE/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = '0l6lexp6'
@@ -42,7 +42,7 @@ ckpt_file = ''
 
 # train_file = 'data/new_data/divided/attr/fine45000.txt'
 train_file = 'data/new_data/divided/attr/fine45000.txt,data/new_data/equal_split_word/coarse89588.txt'
-val_file = 'data/new_data/divided/attr/fine5000.txt'
+val_file = 'data/new_data/divided/attr/val/fine5000.txt'
 
 vocab_dict_file = 'data/new_data/vocab/vocab_dict.json'
 vocab_file = 'data/new_data/vocab/vocab.txt'
@@ -54,7 +54,7 @@ with open(vocab_dict_file, 'r') as f:
 
 # dataset
 from dataset.attr_unequal_dataset import SingleAttrDataset, AttrSequenceDataset, cls_collate_fn
-dataset = SingleAttrDataset
+dataset = AttrSequenceDataset
 collate_fn = cls_collate_fn
 
 # data
@@ -172,6 +172,6 @@ for epoch in range(max_epoch):
         min_loss = loss
         if loss_last_path:
             os.remove(loss_last_path)
-        save_path = save_dir + save_name + '_'  + '{:.4f}'.format(round(loss, 6))+'.pth'
+        save_path = save_dir + save_name + '_'  + '{:.5f}'.format(loss)+'.pth'
         loss_last_path = save_path
         torch.save(model.state_dict(), save_path)
