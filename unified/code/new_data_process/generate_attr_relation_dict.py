@@ -65,6 +65,14 @@ attr_save_file = os.path.join(preprocess_dir, "equal_attr_dict.json")
 with open(attr_save_file, "w") as f:
     json.dump(equal_attr, f, ensure_ascii=False, indent=4)
 
+# 生成id转换字典
+attr_to_id = {}
+for attr_id, attr_value in enumerate(attr_list):
+    attr_to_id[attr_value] = attr_id
+attr_to_id_save_file = os.path.join(preprocess_dir, "attr_to_id.json")
+with open(attr_to_id_save_file, "w") as f:
+    json.dump(attr_to_id, f, ensure_ascii=False, indent=4)
+
 # 生成关系字典
 all_attr_list = []
 for query, query_attr_list in attr_dict.items():
@@ -72,6 +80,41 @@ for query, query_attr_list in attr_dict.items():
         for j, attr in enumerate(item_attr_list):
             all_attr_list.append(attr)
 
+
+category = [
+    ["领型", "袖长", "衣长", "版型", "裙长", "穿着方式"],
+    ["类别"],
+    ["裤型", "裤长", "裤门襟"],
+    ["闭合方式", "鞋帮高度"],
+]
+
+all_category = list(attr_dict.keys())
+
+unsimilar_attr_dic = {}
+for item_category in category:
+    unsimilar_attr = []
+    unsimilar_category = all_category.copy()
+    for item in item_category:
+        unsimilar_category.remove(item)
+
+    for item in unsimilar_category:
+        unsimilar_attr.extend(attr_dict[item])
+    for item in item_category:
+        unsimilar_attr_dic[item] = unsimilar_attr
+
+print(unsimilar_attr_dic)
+
+same_big_category_attr_dic = {}
+for item_category in category:
+    for item in item_category:
+        same_big_category_attr = []
+        _item_category = item_category.copy()
+        _item_category.remove(item)
+        for _item in _item_category:
+            same_big_category_attr.extend(attr_dict[_item])
+        same_big_category_attr_dic[item] = same_big_category_attr
+
+print(same_big_category_attr_dic)
 
 attr_relation_dic = {}
 for query, query_attr_list in attr_dict.items():
@@ -90,7 +133,7 @@ for query, query_attr_list in attr_dict.items():
         _similar_attr.remove(item_attr_list)
 
         for item in _similar_attr:
-            similar_attr.extend(item)
+            similar_attr.append(item)
 
         for j, attr in enumerate(item_attr_list):
             item_dic = {}
@@ -99,7 +142,8 @@ for query, query_attr_list in attr_dict.items():
 
             item_dic["equal_attr"] = equal_attrs_list
             item_dic["similar_attr"] = similar_attr
-            item_dic["unsimilar_attr"] = unsimilar_attr
+            item_dic["same_category_attr"] = same_big_category_attr_dic[query]
+            item_dic["unsimilar_attr"] = unsimilar_attr_dic[query]
 
             attr_relation_dic[attr] = item_dic
 
