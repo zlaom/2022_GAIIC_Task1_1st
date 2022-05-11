@@ -26,7 +26,7 @@ class AttrIdMatchDataset(Dataset):
         if random.random() > 0.5:  # 生成正例子
             equal_attr = self.attr_relation[attr_value]["equal_attr"]
             # if len(equal_attr) > 1 and random.random() > 0.75:  # 正例增强
-            #     soft_label = 0.8
+            #     soft_label = 0.9
             #     attr_value = random.sample(equal_attr, 1)[0]
         else:
             rate = random.random()
@@ -36,15 +36,15 @@ class AttrIdMatchDataset(Dataset):
                 similar_attr_list = self.attr_relation[attr_value]["similar_attr"]
                 item_similar_attr_list = random.sample(similar_attr_list, 1)[0]
                 attr_value = random.sample(item_similar_attr_list, 1)[0]
-            elif rate > 0.1:  # 同大类负例
-                same_category_list = self.attr_relation[attr_value][
-                    "same_category_attr"
-                ]
-                if len(same_category_list) > 0:
-                    label = 0
-                    soft_label = 0.1
-                    item_same_category_list = random.sample(same_category_list, 1)[0]
-                    attr_value = random.sample(item_same_category_list, 1)[0]
+            # elif rate > 0.1:  # 同大类负例
+            #     same_category_list = self.attr_relation[attr_value][
+            #         "same_category_attr"
+            #     ]
+            #     if len(same_category_list) > 0:
+            #         label = 0
+            #         soft_label = 0.1
+            #         item_same_category_list = random.sample(same_category_list, 1)[0]
+            #         attr_value = random.sample(item_same_category_list, 1)[0]
             else:  # 不同大类负例
                 unsimilar_list = self.attr_relation[attr_value]["unsimilar_attr"]
                 if len(unsimilar_list) > 0:

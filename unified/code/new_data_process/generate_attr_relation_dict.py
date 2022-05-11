@@ -90,6 +90,7 @@ category = [
 
 all_category = list(attr_dict.keys())
 
+## 生成完全不相似字典
 unsimilar_attr_dic = {}
 for item_category in category:
     unsimilar_attr = []
@@ -104,6 +105,7 @@ for item_category in category:
 
 print(unsimilar_attr_dic)
 
+## 生成同大类不相似字典
 same_big_category_attr_dic = {}
 for item_category in category:
     for item in item_category:
@@ -116,6 +118,7 @@ for item_category in category:
 
 print(same_big_category_attr_dic)
 
+## 生成关系字典
 attr_relation_dic = {}
 for query, query_attr_list in attr_dict.items():
     query_all_attr = []

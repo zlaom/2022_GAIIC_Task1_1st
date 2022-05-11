@@ -15,7 +15,7 @@ import argparse
 
 parser = argparse.ArgumentParser("train_attr", add_help=False)
 parser.add_argument("--gpus", default="0", type=str)
-parser.add_argument("--fold", default=5, type=int)
+parser.add_argument("--fold", default=10, type=int)
 parser.add_argument("--fold_id", default=0, type=int)
 args = parser.parse_args()
 
@@ -26,17 +26,17 @@ np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
 batch_size = 512
-max_epoch = 200
+max_epoch = 100
 os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
 
 split_layers = 0
 fuse_layers = 12
 n_img_expand = 6
 similar_rate = 0.98
-dropout = 0.2
+dropout = 0.15
 threshold = 0.5
 
-root_dir = f"data/model_data/unequal_v2.2_soft_label_attr_simple_mlp_{args.fold}fold_e{max_epoch}_b{batch_size}_drop{dropout}/"
+root_dir = f"data/model_data/unequal_v2.6_soft_label_attr_se_mlp_{args.fold}fold_e{max_epoch}_b{batch_size}_drop{dropout}/"
 save_dir = f"{root_dir}/fold{args.fold_id}/"
 best_save_dir = f"{root_dir}best/"
 
@@ -78,7 +78,7 @@ with open(attr_to_id, "r") as f:
     attr_to_id = json.load(f)
 
 # 加载数据
-coarse89588_data = []
+all_item_data = []
 with open(coarse89588, "r") as f:
     for line in tqdm(f):
         item = json.loads(line)
@@ -89,8 +89,8 @@ with open(coarse89588, "r") as f:
                 new_item["feature"] = item["feature"]
                 new_item["attr_value"] = attr_value
                 new_item["label"] = 1
-                coarse89588_data.append(new_item)
-        # if len(coarse89588_data) > 2000:
+                all_item_data.append(new_item)
+        # if len(all_item_data) > 2000:
         #     break
 with open(fine50000, "r") as f:
     for line in tqdm(f):
@@ -102,11 +102,11 @@ with open(fine50000, "r") as f:
                 new_item["feature"] = item["feature"]
                 new_item["attr_value"] = attr_value
                 new_item["label"] = 1
-                coarse89588_data.append(new_item)
+                all_item_data.append(new_item)
 
 # coarse89588_item_data = []
 
-# for item in coarse89588_data:
+# for item in all_item_data:
 #     # 训练集图文必须匹配
 #     if item["match"]["图文"]:
 #         # 生成所有离散属性
@@ -137,7 +137,8 @@ with open(fine50000, "r") as f:
 #     if len(coarse89588_item_data) > 2000:
 #         break
 
-coarse89588_data = np.array(coarse89588_data)
+all_item_data = np.array(all_item_data)
+
 
 from dataset.unequal_keyattr_match_dataset import (
     AttrIdMatchDataset,
@@ -150,12 +151,15 @@ collate_fn = attr_id_match_collate_fn
 
 # 划分训练集 测试集
 kf = KFold(n_splits=args.fold, shuffle=True, random_state=seed)
-kf.get_n_splits()
-for fold_id, (train_index, test_index) in enumerate(kf.split(coarse89588_data)):
+
+for fold_id, (train_index, test_index) in enumerate(kf.split(all_item_data)):
     if fold_id == args.fold_id:
         # dataset
-        train_data = coarse89588_data[train_index]
-        val_data = coarse89588_data[test_index]
+        train_data = all_item_data[train_index]
+        val_data = all_item_data[test_index]
+
+        logging.info(f"train_data len {len(train_data)}")
+        logging.info(f"val_data len {len(val_data)}")
 
         train_dataset = dataset(train_data, attr_relation_dict, attr_to_id)
         val_dataset = dataset(val_data, attr_relation_dict, attr_to_id)
@@ -181,9 +185,9 @@ for fold_id, (train_index, test_index) in enumerate(kf.split(coarse89588_data)):
         )
 
         # fuse model
-        from model.attr_mlp import ATTR_ID_MLP2
+        from model.attr_mlp import SE_ATTR_ID_MLP
 
-        model = ATTR_ID_MLP2(attr_num=80, dropout=dropout)
+        model = SE_ATTR_ID_MLP(attr_num=80, dropout=dropout)
         model.cuda()
 
         # optimizer
