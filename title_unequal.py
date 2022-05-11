@@ -16,16 +16,18 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
-gpus = '3'
+gpus = '6'
 batch_size = 128
 max_epoch = 300
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
+
+image_dropout = 0.0
 
 split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = 'output/pretrain/title/unequal_0.7neg/'
+save_dir = 'output/pretrain/title/unequal/posembed_categorymutual/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = '0l6lexp6'
@@ -34,17 +36,16 @@ save_name = '0l6lexp6'
 LR_SCHED = True
 lr = 4e-5
 min_lr = 5e-6
-warmup_epochs = 5
+warmup_epochs = 0
 
 LOAD_CKPT = False
 ckpt_file = ''
 
-# train_file = 'data/new_data/divided/title/fine40000.txt'
-train_file = 'data/new_data/divided/title/fine40000.txt,data/new_data/equal_split_word/coarse89588.txt'
-val_file = 'data/new_data/divided/title/fine700.txt,data/new_data/divided/title/coarse1412.txt'
+train_file = 'data/new_data/divided/title/shuffle/fine35300.txt,data/new_data/equal_split_word/coarse89588.txt'
+val_file = 'data/new_data/divided/title/shuffle/fine700.txt,data/new_data/divided/title/shuffle/coarse1412.txt'
 vocab_dict_file = 'data/new_data/vocab/vocab_dict.json'
 vocab_file = 'data/new_data/vocab/vocab.txt'
-attr_dict_file = 'data/new_data/equal_processed_data/attr_relation_dict.json'
+attr_dict_file = 'data/new_data/equal_processed_data/dict/attr_relation_dict.json'
 
 with open(vocab_dict_file, 'r') as f:
     vocab_dict = json.load(f)
@@ -81,7 +82,7 @@ val_dataloader = DataLoader(
 
 # model
 split_config = BertConfig(num_hidden_layers=split_layers)
-fuse_config = BertConfig(num_hidden_layers=fuse_layers)
+fuse_config = BertConfig(num_hidden_layers=fuse_layers, image_dropout=image_dropout)
 model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
 if LOAD_CKPT:
     model.load_state_dict(torch.load(ckpt_file))

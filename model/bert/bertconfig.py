@@ -1,3 +1,6 @@
+from torch import dropout
+
+
 class BertConfig():
     '''
     Examples:
@@ -24,7 +27,8 @@ class BertConfig():
         use_cache=True,
         classifier_dropout=None,
         output_attentions = False,
-        output_hidden_states = False
+        output_hidden_states = False,
+        image_dropout = 0.0
     ):
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
@@ -44,3 +48,4 @@ class BertConfig():
         # self.classifier_dropout = classifier_dropout
         self.output_attentions = output_attentions # 这两个output是我加的
         self.output_hidden_states = output_hidden_states
+        self.image_dropout = image_dropout

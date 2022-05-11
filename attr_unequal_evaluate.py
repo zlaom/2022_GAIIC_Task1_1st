@@ -16,7 +16,7 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
-gpus = '0'
+gpus = '7'
 batch_size = 128
 max_epoch = 100
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
@@ -34,7 +34,7 @@ min_lr = 5e-6
 warmup_epochs = 5
 
 LOAD_CKPT = True
-ckpt_file = 'output/train/attr/posembed/dp0.3_attrseq_posaug0.25_soft0.8/0l6lexp6_0.9425.pth'
+ckpt_file = 'output/train/attr/posembed/dp0.3_attrseq_posaug0.25_soft0.8_lrsched_bz256/0l6lexp6_0.9433.pth'
 
 
 # train_file = 'data/new_data/divided/attr/fine45000.txt'

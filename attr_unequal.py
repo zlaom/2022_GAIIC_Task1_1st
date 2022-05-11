@@ -14,13 +14,16 @@ ENABLE_AMP = True
 
 
 # fix the seed for reproducibility
-seed = 0
+seed = 1
 torch.manual_seed(seed)
 np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
+fold = seed
+image_dropout = 0.0
+
 gpus = '0'
-batch_size = 128
+batch_size = 256
 max_epoch = 50
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
@@ -28,11 +31,12 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-# save_dir = 'output/train/attr/posembed/dp0.3_attrseq_posaug0.25_soft0.9/'
-save_dir = 'output/train/attr/posembed/dp0.3_attrseq_lrsched/'
+save_dir = 'output/train/attr/5fold/seed1_seqval_0.1unsimilar_dp0/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = '0l6lexp6'
+
+
 
 # adjust learning rate
 LR_SCHED = True
@@ -43,14 +47,16 @@ warmup_epochs = 0
 LOAD_CKPT = False
 ckpt_file = ''
 
-
-# train_file = 'data/new_data/divided/attr/fine45000.txt'
-train_file = 'data/new_data/divided/attr/fine45000.txt,data/new_data/equal_split_word/coarse89588.txt'
-val_file = 'data/new_data/divided/attr/val/fine5000.txt'
+fine_train_file = 'data/new_data/divided/attr/10fold/divide_data/fine45000_'+str(fold)+'.txt'
+coarse_train_file = 'data/new_data/equal_split_word/coarse89588.txt'
+train_file = fine_train_file+','+coarse_train_file
+val_file = 'data/new_data/divided/attr/10fold/0.25posaug/fine5000_'+str(fold)+'.txt'
 
 vocab_dict_file = 'data/new_data/vocab/vocab_dict.json'
 vocab_file = 'data/new_data/vocab/vocab.txt'
-attr_dict_file = 'data/new_data/equal_processed_data/attr_relation_dict.json'
+# attr_dict_file = 'data/new_data/equal_processed_data/attr_relation_dict.json'
+
+attr_dict_file = 'data/new_data/equal_processed_data/dict/attr_relation_dict.json'
 
 with open(vocab_dict_file, 'r') as f:
     vocab_dict = json.load(f)
@@ -87,7 +93,7 @@ val_dataloader = DataLoader(
 
 # model
 split_config = BertConfig(num_hidden_layers=split_layers)
-fuse_config = BertConfig(num_hidden_layers=fuse_layers)
+fuse_config = BertConfig(num_hidden_layers=fuse_layers, image_dropout=image_dropout)
 model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
 if LOAD_CKPT:
     model.load_state_dict(torch.load(ckpt_file))

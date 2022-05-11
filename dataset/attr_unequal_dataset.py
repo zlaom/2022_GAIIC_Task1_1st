@@ -115,6 +115,39 @@ class AttrSequenceDataset(Dataset):
     def __len__(self):
         return len(self.items)
         
+    # def __getitem__(self, idx):
+    #     item = self.items[idx]
+    #     image = torch.tensor(item['feature'])
+        
+    #     if self.is_train:
+    #         # 随机选一个属性
+    #         attr = item['key_attr']
+    #         if random.random() < 0.5: # 替换，随机挑选一个词替换
+    #             label = 0
+    #             # attr_list = np.random.choice(self.relation_dict[attr]['similar_attr'])
+    #             attr_list = random.sample(self.relation_dict[attr]['similar_attr'], 1)[0]
+    #             if len(attr_list) == 1:
+    #                 split = attr_list
+    #             else:
+    #                 attr = random.sample(attr_list, 1)[0]
+    #                 split = [attr]
+    #         else: 
+    #             label = 1
+    #             split = [attr]
+    #             if self.relation_dict[attr]['equal_attr']:
+    #                 if random.random() < 0.25: # 正例增强
+    #                     label = 0.8
+    #                     split = random.sample(self.relation_dict[attr]['equal_attr'], 1)
+    #     else:
+    #         (query, attr), = item['key_attr'].items()
+    #         split = [attr]
+    #         label = item['match'][query]
+            
+    #     return image, split, label
+
+
+
+    # 异类增强
     def __getitem__(self, idx):
         item = self.items[idx]
         image = torch.tensor(item['feature'])
@@ -124,8 +157,10 @@ class AttrSequenceDataset(Dataset):
             attr = item['key_attr']
             if random.random() < 0.5: # 替换，随机挑选一个词替换
                 label = 0
-                # attr_list = np.random.choice(self.relation_dict[attr]['similar_attr'])
-                attr_list = random.sample(self.relation_dict[attr]['similar_attr'], 1)[0]
+                if random.random() < 0.1:
+                    attr_list = random.sample(self.relation_dict[attr]['unsimilar_attr'], 1)[0]
+                else:
+                    attr_list = random.sample(self.relation_dict[attr]['similar_attr'], 1)[0]
                 if len(attr_list) == 1:
                     split = attr_list
                 else:
@@ -134,18 +169,16 @@ class AttrSequenceDataset(Dataset):
             else: 
                 label = 1
                 split = [attr]
-                # if self.relation_dict[attr]['equal_attr']:
-                #     if random.random() < 0.25: # 正例增强
-                #         label = 0.8
-                #         split = random.sample(self.relation_dict[attr]['equal_attr'], 1)
+                if self.relation_dict[attr]['equal_attr']:
+                    if random.random() < 0.25: # 正例增强
+                        label = 0.8
+                        split = random.sample(self.relation_dict[attr]['equal_attr'], 1)
         else:
             (query, attr), = item['key_attr'].items()
             split = [attr]
             label = item['match'][query]
             
         return image, split, label
-
-
 
 
 
@@ -211,3 +244,55 @@ def cls_collate_fn(batch):
 
     return tensors, splits, labels
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # 异类增强
+    # def __getitem__(self, idx):
+    #     item = self.items[idx]
+    #     image = torch.tensor(item['feature'])
+        
+    #     if self.is_train:
+    #         # 随机选一个属性
+    #         attr = item['key_attr']
+    #         if random.random() < 0.5: # 替换，随机挑选一个词替换
+    #             label = 0
+    #             if random.random() < 0.1:
+    #                 attr_list = random.sample(self.relation_dict[attr]['unsimilar_attr'], 1)[0]
+    #             else:
+    #                 attr_list = random.sample(self.relation_dict[attr]['similar_attr'], 1)[0]
+    #             if len(attr_list) == 1:
+    #                 split = attr_list
+    #             else:
+    #                 attr = random.sample(attr_list, 1)[0]
+    #                 split = [attr]
+    #         else: 
+    #             label = 1
+    #             split = [attr]
+    #             if self.relation_dict[attr]['equal_attr']:
+    #                 if random.random() < 0.25: # 正例增强
+    #                     label = 0.8
+    #                     split = random.sample(self.relation_dict[attr]['equal_attr'], 1)
+    #     else:
+    #         (query, attr), = item['key_attr'].items()
+    #         split = [attr]
+    #         label = item['match'][query]
+            
+    #     return image, split, label
