@@ -6,8 +6,8 @@ from tqdm import tqdm
 
 for file_index in range(4):
 
-    title_file = f'output/fusion/predict/title_{file_index}.txt'
-    attr_file = f'output/fusion/predict/attr_{file_index}.txt'
+    title_file = f'output/fusion/predict/no_pos_title_{file_index}.txt'
+    attr_file = f'output/fusion/predict/no_pos_attr_{file_index}.txt'
     
     title_data = []
     attr_data = []
@@ -34,7 +34,7 @@ for file_index in range(4):
          all_data.append(json.dumps(data, ensure_ascii=False)+'\n')
 
     out_dir = 'output/fusion/predict'
-    out_file = os.path.join(out_dir, f"merge_{file_index}.txt")
+    out_file = os.path.join(out_dir, f"no_pos_merge_{file_index}.txt")
 
     with open(out_file, 'w') as f:
         f.writelines(all_data)

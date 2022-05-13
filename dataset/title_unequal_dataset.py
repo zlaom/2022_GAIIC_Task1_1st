@@ -69,7 +69,7 @@ class FuseReplaceDataset(Dataset):
                         if new_word in split or new_word in equal_list:
                             label = 1
                         else:
-                            label = 0.4
+                            label = 0.1
                             split[i] = new_word
             # else: # 正例增强
             #     split = copy.deepcopy(split)

@@ -16,7 +16,7 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
-gpus = '6'
+gpus = '4'
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 for file_index in range(4):
@@ -29,12 +29,12 @@ for file_index in range(4):
     # with open(attr_dict_file, 'r') as f:
     #     attr_dict = json.load(f)
 
-    test_file = f'output/fusion/pos_{file_index}.txt'
+    test_file = f'output/fusion/no_pos_{file_index}.txt'
     out_dir = 'output/fusion/predict'
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
         
-    out_file = os.path.join(out_dir, f"attr_{file_index}.txt")
+    out_file = os.path.join(out_dir, f"no_pos_attr_{file_index}.txt")
 
 
     # fuse model 

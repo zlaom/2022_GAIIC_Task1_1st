@@ -17,7 +17,7 @@ torch.backends.cudnn.benchmark = True
 
 image_dropout = 0.0
 
-gpus = '6'
+gpus = '4'
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 for file_index in range(4):
@@ -34,12 +34,12 @@ for file_index in range(4):
         attr_dict = json.load(f)
         
         
-    test_file = f'output/fusion/pos_{file_index}.txt'
+    test_file = f'output/fusion/no_pos_{file_index}.txt'
     out_dir = 'output/fusion/predict'
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
         
-    out_file = os.path.join(out_dir, f"title_{file_index}.txt")
+    out_file = os.path.join(out_dir, f"no_pos_title_{file_index}.txt")
 
 
 

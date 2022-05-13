@@ -16,7 +16,7 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
-gpus = '7'
+gpus = '5'
 batch_size = 256
 max_epoch = 400
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
@@ -27,7 +27,7 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = 'output/pretrain/title/unequal_day3/randomrep_soft0.4/'
+save_dir = 'output/pretrain/title/unequal_day3/randomrep_soft0.1/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = '0l6lexp6'

@@ -6,7 +6,7 @@ SAVE_DIR = 'data/new_data'
 
 preprocess_dir = os.path.join(SAVE_DIR, 'equal_processed_data')
 split_word_dir = os.path.join(SAVE_DIR, 'split_word')
-equal_split_word_dir = os.path.join(SAVE_DIR, 'equal_split_word')
+equal_split_word_dir = os.path.join(SAVE_DIR, 'equal_split_word_200')
 vocab_dir = os.path.join(SAVE_DIR, 'vocab')
 if not os.path.exists(equal_split_word_dir):
     os.makedirs(equal_split_word_dir)
@@ -22,7 +22,7 @@ vocab_txt_save_file = os.path.join(vocab_dir, 'vocab.txt')
 
 name_list = ['fine50000.txt', 'coarse89588.txt', 'coarse10412.txt']
 
-
+GATE = 200
 # ---------------------生成vocab_dict.json,经过了词频筛选,组合等步骤--------------------- #
 print('generate vocab_dict.json')
 # 读入未处理的词表
@@ -40,7 +40,7 @@ def union_word_dict(word_dict, new_word, ori_word):
         word_dict[new_word] = word_dict[ori_word]
 
 for word in word_list:
-    if word_dict[word] < 50: # 注意这个值要与后面删除的阈值保持一致
+    if word_dict[word] < GATE: # 注意这个值要与后面删除的阈值保持一致
         # 两个特殊的颜色
         rep_word = word
         if '卡其' in rep_word:
@@ -67,15 +67,14 @@ all_attr = get_dict(attr_dict_file)
 ignore_list = all_attr + color_list + ['卡其', '咖啡']
 word_list = list(word_dict.keys())
 for word in word_list:
-    if word_dict[word] < 50 and word not in ignore_list:
-        del word_dict[word]
-    if word == '/':
+    if word_dict[word] < GATE and word not in ignore_list:
         del word_dict[word]
         
 # 去掉没有单独意义的字词
-delete_words = ['色','小','本','中','新','款','加','底','件','不']
+delete_words = ['色','小','本','中','新','款','加','底','件','不', '/']
 for word in delete_words:
-    del word_dict[word]
+    if word in word_dict:
+        del word_dict[word]
     
 # 保存处理后的词表
 vocab_dict = word_dict
