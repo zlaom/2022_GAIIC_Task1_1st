@@ -81,8 +81,6 @@ class AttrSequenceDataset(Dataset):
         with open(relation_dict_file, 'r') as f:
             relation_dict = json.load(f)
             
-        # for attr, dict in relation_dict.items():
-        #     dict['similar_attr'] = np.array(dict['similar_attr'], dtype='object')
         self.relation_dict = relation_dict
         self.all_list = list(relation_dict.keys())
         # 取出所有可替换的词及出现的次数比例
@@ -114,17 +112,45 @@ class AttrSequenceDataset(Dataset):
         
     def __len__(self):
         return len(self.items)
-        
+    
+    # standard
+    def __getitem__(self, idx):
+        item = self.items[idx]
+        image = torch.tensor(item['feature'])
+        if self.is_train:
+            # 随机选一个属性
+            attr = item['key_attr']
+            if random.random() < 0.5: # 替换，随机挑选一个词替换
+                label = 0
+                attr_list = random.sample(self.relation_dict[attr]['similar_attr'], 1)[0]
+                if len(attr_list) == 1:
+                    attr = attr_list[0]
+                else:
+                    attr = random.sample(attr_list, 1)[0]
+            else: 
+                label = 1
+                if self.relation_dict[attr]['equal_attr']:
+                    if random.random() < 0.25: # 正例增强
+                        label = 0.8
+                        attr = random.sample(self.relation_dict[attr]['equal_attr'], 1)[0]
+        else:
+            (query, attr), = item['key_attr'].items()
+            label = item['match'][query]
+        split = [attr]
+         
+        return image, split, label
+
+
+
+    # 句子输入
     # def __getitem__(self, idx):
     #     item = self.items[idx]
     #     image = torch.tensor(item['feature'])
-        
+    #     ori_split = item['vocab_split']
     #     if self.is_train:
-    #         # 随机选一个属性
     #         attr = item['key_attr']
-    #         if random.random() < 0.5: # 替换，随机挑选一个词替换
+    #         if random.random() < 0.5: # 替换
     #             label = 0
-    #             # attr_list = np.random.choice(self.relation_dict[attr]['similar_attr'])
     #             attr_list = random.sample(self.relation_dict[attr]['similar_attr'], 1)[0]
     #             if len(attr_list) == 1:
     #                 split = attr_list
@@ -142,43 +168,11 @@ class AttrSequenceDataset(Dataset):
     #         (query, attr), = item['key_attr'].items()
     #         split = [attr]
     #         label = item['match'][query]
-            
+    #     # 添加所有非属性词
+    #     for word in ori_split:
+    #         if word not in self.all_list:
+    #             split.append(word)
     #     return image, split, label
-
-
-
-    # 异类增强
-    def __getitem__(self, idx):
-        item = self.items[idx]
-        image = torch.tensor(item['feature'])
-        
-        if self.is_train:
-            # 随机选一个属性
-            attr = item['key_attr']
-            if random.random() < 0.5: # 替换，随机挑选一个词替换
-                label = 0
-                if random.random() < 0.1:
-                    attr_list = random.sample(self.relation_dict[attr]['unsimilar_attr'], 1)[0]
-                else:
-                    attr_list = random.sample(self.relation_dict[attr]['similar_attr'], 1)[0]
-                if len(attr_list) == 1:
-                    split = attr_list
-                else:
-                    attr = random.sample(attr_list, 1)[0]
-                    split = [attr]
-            else: 
-                label = 1
-                split = [attr]
-                if self.relation_dict[attr]['equal_attr']:
-                    if random.random() < 0.25: # 正例增强
-                        label = 0.8
-                        split = random.sample(self.relation_dict[attr]['equal_attr'], 1)
-        else:
-            (query, attr), = item['key_attr'].items()
-            split = [attr]
-            label = item['match'][query]
-            
-        return image, split, label
 
 
 

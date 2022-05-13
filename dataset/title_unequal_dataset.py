@@ -44,12 +44,11 @@ class FuseReplaceDataset(Dataset):
         split = item['vocab_split']
         key_attr = item['key_attr']
         equal_list = []
-        category_list = []
         for query, attr in key_attr.items():
             equal_list.extend(self.relation_dict[attr]['equal_attr'])
-        if key_attr:
-            for l in self.relation_dict[attr]['same_category_attr']:
-                category_list.extend(l)
+        # if key_attr:
+        #     for l in self.relation_dict[attr]['same_category_attr']:
+        #         category_list.extend(l)
         if self.is_train:
             split = copy.deepcopy(split) # 要做拷贝，否则会改变self.items的值
             label = 1
@@ -67,10 +66,20 @@ class FuseReplaceDataset(Dataset):
                         split[i] = new_attr
                     else: # 否则，随机替换
                         new_word = np.random.choice(self.words_list, p=self.proba_list)
-                        if new_word in split or new_word in equal_list or new_word in category_list:
+                        if new_word in split or new_word in equal_list:
                             label = 1
                         else:
+                            label = 0.4
                             split[i] = new_word
+            # else: # 正例增强
+            #     split = copy.deepcopy(split)
+            #     for query, attr in key_attr.items():
+            #         if self.relation_dict[attr]['equal_attr']:
+            #             if random.random() < 0.05: # 正例增强
+            #                 label = 1
+            #                 new_attr = random.sample(self.relation_dict[attr]['equal_attr'], 1)[0]
+            #                 attr_idx = split.index(attr)
+            #                 split[attr_idx] = new_attr
         else:
             label = item['match']['图文']
 

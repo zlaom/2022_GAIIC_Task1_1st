@@ -24,7 +24,7 @@ class FuseModel(nn.Module):
         )
         
         self.head = nn.Linear(fuse_config.hidden_size, 1)
-           
+
     def forward(self, image_features, splits, word_match=False): # 注意splits需要为二维列表
         B = image_features.shape[0]
         image_features = self.image_encoder(image_features)
@@ -64,7 +64,9 @@ class FuseModel(nn.Module):
         x = self.head(fuse_output[:,0,:])
         return x
 
-
+    
+    
+    
 class FuseModelToken(nn.Module):
     def __init__(self, split_config, fuse_config, vocab_file, img_dim=2048, n_img_expand=8):
         super().__init__()

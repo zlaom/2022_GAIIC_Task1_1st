@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm 
 
 from model.bert.bertconfig import BertConfig
-from model.fusemodel import FuseModel
+from model.fusemodel import FuseModelSentence, FuseModel
 
 from utils.lr_sched import adjust_learning_rate
 from torch.cuda import amp 
@@ -22,16 +22,16 @@ torch.backends.cudnn.benchmark = True
 fold = seed
 image_dropout = 0.3
 
-gpus = '5'
+gpus = '6'
 batch_size = 256
-max_epoch = 50
+max_epoch = 200
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = 'output/train/attr/parallel_fusemodel/'
+save_dir = 'output/train/attr/sentence/title_pretrain_dp0.3_sentence_real/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = '0l6lexp6'
@@ -39,33 +39,34 @@ save_name = '0l6lexp6'
 
 
 # adjust learning rate
-LR_SCHED = True
-lr = 1e-4
+LR_SCHED = False
+lr = 1e-5
 min_lr = 5e-6
 warmup_epochs = 0
 
-LOAD_CKPT = False
-ckpt_file = ''
+LOAD_CKPT = True
+ckpt_file = 'output/pretrain/title/unequal/posembed_dp0.3_bz256_epoch400/0l6lexp6_0.9271.pth'
 
-fine_train_file = 'data/new_data/divided/attr/10fold/divide_data/fine45000_'+str(fold)+'.txt'
-coarse_train_file = 'data/new_data/equal_split_word/coarse89588.txt'
-train_file = fine_train_file+','+coarse_train_file
-# train_file = 'data/new_data/divided/attr/10fold/divide_data/fine5000_0.txt'
-val_file = 'data/new_data/divided/attr/10fold/0.25posaug/fine5000_'+str(fold)+'.txt'
-vocab_dict_file = 'data/new_data/vocab/vocab_dict.json'
-vocab_file = 'data/new_data/vocab/vocab.txt'
-attr_dict_file = 'data/new_data/equal_processed_data/dict/attr_relation_dict.json'
-
-
-# result merge
-# fine_train_file = 'data/new_data/divided/title/shuffle/fine35300.txt'
+# fine_train_file = 'data/new_data/divided/attr/10fold/divide_data/fine45000_'+str(fold)+'.txt'
 # coarse_train_file = 'data/new_data/equal_split_word/coarse89588.txt'
+
 # train_file = fine_train_file+','+coarse_train_file
-# # val_file = 'data/new_data/divided/attr/10fold/0.25posaug/fine5000_'+str(fold)+'.txt'
-# val_file = 'data/new_data/divided/title/shuffle/fine5000_0.25posaug.txt'
+# val_file = 'data/new_data/divided/attr/10fold/0.25posaug/fine5000_'+str(fold)+'.txt'
+
 # vocab_dict_file = 'data/new_data/vocab/vocab_dict.json'
 # vocab_file = 'data/new_data/vocab/vocab.txt'
 # attr_dict_file = 'data/new_data/equal_processed_data/dict/attr_relation_dict.json'
+
+
+# pretrain title dataset
+fine_train_file = 'data/new_data/divided/title/shuffle/fine35300.txt,data/new_data/divided/title/shuffle/fine9000.txt'
+coarse_train_file = 'data/new_data/equal_split_word/coarse89588.txt'
+train_file = fine_train_file+','+coarse_train_file
+val_file = 'data/new_data/divided/title/shuffle/fine5000_0.25posaug.txt'
+
+vocab_dict_file = 'data/new_data/vocab/vocab_dict.json'
+vocab_file = 'data/new_data/vocab/vocab.txt'
+attr_dict_file = 'data/new_data/equal_processed_data/dict/attr_relation_dict.json'
 
 
 with open(vocab_dict_file, 'r') as f:
