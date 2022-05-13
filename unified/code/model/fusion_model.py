@@ -23,12 +23,13 @@ class FusionTitleMlp(nn.Module):
         )
 
     def forward(self, origin_predict, mask):
-        title_origin_predict = origin_predict[:, [1]]
+        title_origin_predict = origin_predict[:, [0]]
         attr_origin_predict = origin_predict[:, 1:]
-        attr_mask = mask[:, 1:]
-        attr_num = torch.sum(attr_mask, dim=-1, keepdim=True)
+        # attr_mask = mask[:, 1:]
+        # attr_num = torch.sum(attr_mask, dim=-1, keepdim=True)
         # 属性预测标准化
-        attr_origin_predict = attr_origin_predict / attr_num
+        # attr_origin_predict = attr_origin_predict / attr_num
+        # attr_origin_predict[attr_mask == 0] = -1
 
         # 1次修正
         input_data = torch.cat((title_origin_predict, attr_origin_predict), dim=-1)
@@ -40,6 +41,36 @@ class FusionTitleMlp(nn.Module):
 
         # 裁剪
         new_title_predict = torch.clamp(new_title_predict, 0, 1)
+
+        new_title_predict = torch.squeeze(new_title_predict, -1)
+
+        return new_title_predict
+
+
+class FusionTitleMlp2(nn.Module):
+    def __init__(self, key_attr_num=13):
+        super().__init__()
+        self.fusion_linear = nn.Sequential(
+            nn.Linear(key_attr_num, 512),
+            nn.ReLU(),
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.Linear(256, 1),
+            nn.Sigmoid(),
+        )
+
+    def forward(self, origin_predict, mask):
+        title_origin_predict = origin_predict[:, [0]]
+        attr_origin_predict = origin_predict[:, 1:]
+        attr_mask = mask[:, 1:]
+        attr_num = torch.sum(attr_mask, dim=-1, keepdim=True)
+        # 属性预测标准化
+        attr_origin_predict = attr_origin_predict / attr_num
+
+        # 1次修正
+        input_data = torch.cat((title_origin_predict, attr_origin_predict), dim=-1)
+        new_title_predict = self.fusion_linear(input_data)
+        new_title_predict = torch.squeeze(new_title_predict, -1)
 
         return new_title_predict
 
@@ -70,20 +101,19 @@ class FusionAttrMlp(nn.Module):
         title_origin_predict = origin_predict[:, [1]]
         attr_origin_predict = origin_predict[:, 1:]
         attr_mask = mask[:, 1:]
-        attr_num = torch.sum(attr_mask, dim=-1, keepdim=True)
+        # attr_num = torch.sum(attr_mask, dim=-1, keepdim=True)
 
-        # 属性预测标准化
-        attr_origin_predict = attr_origin_predict / attr_num
+        # # 属性预测标准化
+        # attr_uni_predict = attr_origin_predict / attr_num
+        # attr_uni_predict[attr_mask == 0] = -1
 
         # 1次修正
         input_data = torch.cat((title_origin_predict, attr_origin_predict), dim=-1)
         new_attr_predict = attr_origin_predict + self.fusion_linear1(input_data)
-        new_attr_predict[attr_mask == 0] = 0
 
         # 2次修正
-        input_data = torch.cat((title_origin_predict, attr_origin_predict), dim=-1)
+        input_data = torch.cat((title_origin_predict, new_attr_predict), dim=-1)
         new_attr_predict = new_attr_predict + self.fusion_linear1(input_data)
-        new_attr_predict[attr_mask == 0] = 0
 
         # 裁剪
         new_attr_predict = torch.clamp(new_attr_predict, 0, 1)
