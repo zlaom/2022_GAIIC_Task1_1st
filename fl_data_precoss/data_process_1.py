@@ -136,7 +136,7 @@ with open(fine_file, 'r') as f:
                 key_attr[query] = '系带鞋'
                 title = title.replace(attr, '系带鞋')
         # 一个高频词的特殊处理
-        if '厚度常规' in title:
+        if '常规厚度' not in title and '厚度常规款' not in title and '厚度常规' in title:
             title = title.replace('厚度常规', '常规厚度')
         
         data['key_attr'] = key_attr
@@ -203,8 +203,8 @@ with open(coarse_file, 'r') as f:
                             key_attr[query] = attr
                             data['match'][query] = 1 
         # 一个高频词的特殊处理
-        if '厚度常规' in title:
-            title = title.replace('厚度常规', '常规厚度')                   
+        if '常规厚度' not in title and '厚度常规款' not in title and '厚度常规' in title:
+            title = title.replace('厚度常规', '常规厚度')                  
         data['key_attr'] = key_attr
         data['title'] = title
         

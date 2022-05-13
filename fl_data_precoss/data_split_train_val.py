@@ -7,7 +7,7 @@ import numpy as np
 seed_num = 2022
 np.random.seed(seed_num)
 
-seed_num = 'order'
+#seed_num = 'order'
 yaml_path = '../new_config_1.yaml'
 with open(yaml_path, 'r', encoding='utf-8') as f:
     config = yaml.load(f.read(), Loader=yaml.FullLoader)
@@ -36,7 +36,7 @@ with open(fine_file, 'r') as f:
         fine_data.append(json.dumps(item, ensure_ascii=False)+'\n')
         # del item['feature']
 
-# np.random.shuffle(fine_data)
+np.random.shuffle(fine_data)
 rets_pretrain = fine_data[:40000]
 rets_train = fine_data[40000:49000]
 rets_val = fine_data[49000:49700]
@@ -65,7 +65,7 @@ for file in coarse_file.split(','):
             item = json.loads(line)
             # del item['feature']
             coarse_data.append(json.dumps(item, ensure_ascii=False)+'\n')
-# np.random.shuffle(coarse_data)
+np.random.shuffle(coarse_data)
 rets_train = coarse_data[:9000]
 rets_val = coarse_data[9000:]        
 print(len(rets_train))

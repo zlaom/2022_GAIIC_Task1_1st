@@ -101,7 +101,8 @@ with open(test_file, 'r') as f:
                     print(data['title'])
                     print(data['query'])
         
-        if '厚度常规' in title:
+        # 一个高频词的特殊处理
+        if '常规厚度' not in title and '厚度常规款' not in title and '厚度常规' in title:
             title = title.replace('厚度常规', '常规厚度')
         data['key_attr'] = key_attr
         data['title'] = title
