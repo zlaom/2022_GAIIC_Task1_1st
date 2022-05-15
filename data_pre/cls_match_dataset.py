@@ -61,6 +61,7 @@ class FuseReplaceDataset(Dataset):
                         rep_idx = random.sample([i for i in range(len(split))], 2)
                     else:
                         rep_idx = random.sample([i for i in range(len(split))], 1)
+                
                 for i in rep_idx:
                     word = split[i]
                     if word in self.negative_dict: # 如果是关键属性则属性替换
@@ -86,6 +87,11 @@ class NewFuseReplaceDataset(Dataset):
         self.is_train = is_train
         with open(attr_dict_file, 'r') as f:
             attr_dict = json.load(f)
+        all_attrs = []
+        for values in attr_dict.values():
+            for val in values:
+                all_attrs.extend(val)
+        self.all_attrs = all_attrs
         self.positive_dict, self.negative_dict = self.get_positive_negative_dict(attr_dict)
         # {x:neg[]}
 
@@ -98,6 +104,7 @@ class NewFuseReplaceDataset(Dataset):
         self.words_list = words_list 
         proba_list = np.array(proba_list)
         self.proba_list = proba_list / np.sum(proba_list)
+        
         
         # 提取数据
         self.items = []
@@ -162,6 +169,8 @@ class NewFuseReplaceDataset(Dataset):
             label = item['match']['图文']
 
         return image, split, label
+
+
 
 
 class FuseAttrReplaceDataset(Dataset):

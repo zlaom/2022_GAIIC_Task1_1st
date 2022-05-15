@@ -11,7 +11,7 @@ import argparse
 import numpy as np
 import scipy.io as scio
 import random
-os.environ["CUDA_VISIBLE_DEVICES"] = '2'
+os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import _LRScheduler
@@ -43,16 +43,17 @@ def set_seed_logger(dataset_cfg):
 
 def init_model(model_cfg, device):
     split_config = BertConfig(num_hidden_layers=0)
-    fuse_config = BertConfig(num_hidden_layers=8)
+    fuse_config = BertConfig(num_hidden_layers=6)
     model = FuseModel(split_config, fuse_config, 'data/fl_split_word/vocab/vocab.txt', n_img_expand=6)
+    #model.load_state_dict(torch.load('checkpoints/train/p_0.6_yes_new_80_mean_split_order_h8_epd6_best_acc.pth'))
     model = model.to(device)
     return model
 
 
 def get_dataloader(dataset_cfg):
     
-    train_path = './data/fl_equal_split_word/title/order_fine40000.txt,./data/fl_equal_split_word/coarse89588.txt'
-    val_path = './data/fl_equal_split_word/title/order_fine700.txt,./data/fl_equal_split_word/title/order_coarse1412.txt'    
+    train_path = './data/fl_equal_split_word/title/2_fine40000.txt,./data/fl_equal_split_word/coarse89588.txt'
+    val_path = './data/fl_equal_split_word/title/2_fine700.txt,./data/fl_equal_split_word/title/2_coarse1412.txt'    
     attr_dict_path = './data/fl_equal_processed_data/attr_to_attrvals.json'
     vocab_dict_path = './data/fl_split_word/vocab/vocab_dict.json'
     with open(vocab_dict_path, 'r') as f:
@@ -161,11 +162,11 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
         if acc > best_acc:
             best_acc = acc
             torch.save(model.state_dict(),
-                    os.path.join(output_folder, 'yes_new_80_mean_split_order_h8_epd6_best_acc.pth'))
+                    os.path.join(output_folder, 'new_image_0.2_attr_80_2022_h6_epd6_best_acc.pth'))
         if best_loss > val_loss:
             best_loss = val_loss
             torch.save(model.state_dict(),
-                    os.path.join(output_folder, 'yes_new_80_mean_split_order_h8_epd6_best_loss.pth'))
+                    os.path.join(output_folder, 'new_image_0.2_attr_80_2022_h6_epd6_best_loss.pth'))
         
         logging.info(' best acc is %f   |   best loss is %f', best_acc, best_loss)
         

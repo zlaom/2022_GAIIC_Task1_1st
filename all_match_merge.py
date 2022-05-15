@@ -39,10 +39,6 @@ def main():
             else:
                 data['match'][key] = 0
 
-        if data['match']['图文'] == 1:
-            for key, val in data['match'].items():
-                data['match'][key] = 1
-
         rets.append(json.dumps(data, ensure_ascii=False)+'\n')
     
     print(len(rets))

@@ -11,7 +11,7 @@ import argparse
 import numpy as np
 import scipy.io as scio
 import random
-os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import _LRScheduler
@@ -51,8 +51,8 @@ def init_model(model_cfg, device):
 
 def get_dataloader(dataset_cfg):
     
-    train_path = './data/equal_split_word/title/order_fine40000.txt,./data/equal_split_word/coarse89588.txt'
-    val_path = './data/equal_split_word/title/order_fine700.txt,./data/equal_split_word/title/order_coarse1412.txt'    
+    train_path = './data/equal_split_word/fine50000.txt,./data/equal_split_word/coarse89588.txt'
+    val_path = './data/equal_split_word/coarse10412.txt'    
     attr_dict_path = './data/equal_processed_data/attr_to_attrvals.json'
     vocab_dict_path = './data/split_word/vocab/vocab_dict.json'
     with open(vocab_dict_path, 'r') as f:
@@ -145,8 +145,10 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
     logging.info('Train num = %d', train_num)
     logging.info('Test num = %d', val_num)
     logging.info('Num steps = %d', num_train_optimization_steps)
-    
+    logging.info('Model parameters = %d', sum(p.numel() for p in model.parameters()))
+
     best_loss, best_acc = 1, 0
+    best_train_loss = 1.0
     for epoch in range(dataset_cfg['EPOCHS']):
         step_lr_schedule(optimizer, epoch, optim_cfg['LR'], optim_cfg['MIN_LR'], optim_cfg['WEIGHT_DECAY'])
         # test_epoch(model, val_dataloader, loss_fn_1, device)
@@ -161,12 +163,15 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
         if acc > best_acc:
             best_acc = acc
             torch.save(model.state_dict(),
-                    os.path.join(output_folder, 'mean_split_order_h8_epd6_best_acc.pth'))
+                    os.path.join(output_folder, '54_p_0.6_mean_split_order_h8_epd6_best_acc.pth'))
         if best_loss > val_loss:
             best_loss = val_loss
             torch.save(model.state_dict(),
-                    os.path.join(output_folder, 'mean_split_order_h8_epd6_best_loss.pth'))
-        
+                    os.path.join(output_folder, '54_p_0.6_mean_split_order_h8_epd6_best_loss.pth'))
+        if best_train_loss > train_loss:
+            best_train_loss = train_loss
+            torch.save(model.state_dict(),
+                    os.path.join(output_folder, '54_p_0.6_mean_split_order_h8_epd6_best_train.pth'))
         logging.info(' best acc is %f   |   best loss is %f', best_acc, best_loss)
         
 

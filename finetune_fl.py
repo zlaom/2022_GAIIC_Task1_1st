@@ -43,17 +43,17 @@ def set_seed_logger(dataset_cfg):
 
 def init_model(model_cfg, device):
     split_config = BertConfig(num_hidden_layers=0)
-    fuse_config = BertConfig(num_hidden_layers=8)
+    fuse_config = BertConfig(num_hidden_layers=6)
     model = FuseModel(split_config, fuse_config, 'data/fl_split_word/vocab/vocab.txt', n_img_expand=6)
-    model.load_state_dict(torch.load('checkpoints/train/yes_new_80_mean_split_order_h8_epd6_best_loss.pth'))
+    model.load_state_dict(torch.load('checkpoints/train/new_image_0.2_attr_80_2022_h6_epd6_best_acc.pth'))
     model = model.to(device)
     return model
 
 
 def get_dataloader(dataset_cfg):
     
-    train_path = './data/fl_equal_split_word/title/order_coarse9000.txt,./data/fl_equal_split_word/title/order_fine9000.txt'
-    val_path = './data/fl_equal_split_word/title/order_fine700.txt,./data/fl_equal_split_word/title/order_coarse1412.txt'    
+    train_path = './data/fl_equal_split_word/title/2_coarse9000.txt,./data/fl_equal_split_word/title/2_fine9000.txt,./data/fl_equal_split_word/title/2_coarse9000.txt'
+    val_path = './data/fl_equal_split_word/title/2_fine700.txt,./data/fl_equal_split_word/title/2_coarse1412.txt'    
 
     train_dataset = ITMDataset(train_path, )
     val_dataset = ITMDataset(val_path, )
@@ -65,7 +65,7 @@ def get_dataloader(dataset_cfg):
         val_dataset, batch_size=dataset_cfg['VAL_BATCH'], shuffle=False,
         num_workers=dataset_cfg['NUM_WORKERS'], drop_last=False, pin_memory=True, collate_fn=cls_collate_fn)
 
-    return train_loader, val_loader, 18000, 2124
+    return train_loader, val_loader, 12000, 2124
 
 
 def train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn, device):
@@ -155,7 +155,7 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
                      train_loss, val_loss,  acc)
         
         torch.save(model.state_dict(),
-                os.path.join(output_folder, '80_seed_2_mean_h8_epd6_finetune_best_loss_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
+                os.path.join(output_folder, 'double_2_image_0.2_80_seed_2_finetune_best_loss_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
         
 
 
