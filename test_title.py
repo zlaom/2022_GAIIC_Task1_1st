@@ -48,6 +48,7 @@ for file_index in range(4):
     fuse_config = BertConfig(num_hidden_layers=fuse_layers, image_dropout=image_dropout)
     model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
     model.load_state_dict(torch.load(ckpt_path))
+    print(f"参数量: {sum(param.numel() for param in model.parameters())}")
     model.cuda()
 
 

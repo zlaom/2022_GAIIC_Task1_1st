@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm 
 
 from model.bert.bertconfig import BertConfig
-from model.fusemodel import FuseModel
+from model.fusemodel import DesignFuseModel, DesignFuseModelMean
 
 from utils.lr_sched import adjust_learning_rate
 
@@ -15,12 +15,13 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
-gpus = '7'
-batch_size = 128
-max_epoch = 50
+gpus = '3'
+batch_size = 64
+max_epoch = 10
+fold = 2
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
-image_dropout = 0.3
+image_dropout = 0.0
 
 split_layers = 0
 fuse_layers = 6
@@ -29,26 +30,29 @@ n_img_expand = 6
 
 # adjust learning rate
 LR_SCHED = False
-lr = 1e-5
-min_lr = 1e-6
-warmup_epochs = 5
+lr = 2e-5
+min_lr = 1e-5
+warmup_epochs = 0
 
-save_dir = 'output/finetune/title/2tasks/0.9295/'
+save_dir = 'output/finetune/title/2tasks/1rep_2rep_2wordloss/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
-save_name = ''
+# save_name = f'fold{fold}'
+save_name = 'order'
 
 FREEZE = False
 LOAD_CKPT = True
-ckpt_file = 'output/pretrain/title/2tasks/1rep_2rep/0l6lexp6_acc_0.9295.pth'
+ckpt_file = 'output/pretrain/title/2tasks_nobug/1rep_2rep_2wordloss/0l6lexp6_acc_0.9318.pth'
 
-# train_file = 'data/new_data/divided/title/shuffle/fine9000.txt,data/new_data/divided/title/shuffle/coarse9000.txt,data/new_data/divided/title/shuffle/coarse9000.txt'
-# val_file = 'data/new_data/divided/title/shuffle/fine700.txt,data/new_data/divided/title/shuffle/coarse1412.txt'
-
-train_file = 'data/new_data/divided/title/fine9000.txt,data/new_data/divided/title/coarse9000.txt'
+# order
+train_file = 'data/new_data/divided/title/fine9000.txt,data/new_data/divided/title/coarse9000.txt,data/new_data/divided/title/coarse9000.txt'
 val_file = 'data/new_data/divided/title/fine700.txt,data/new_data/divided/title/coarse1412.txt'
+# seed
+# train_file = f'data/new_data/divided/title/shuffle/seed{fold}/fine9000.txt,data/new_data/divided/title/shuffle/seed{fold}/coarse9000.txt,data/new_data/divided/title/shuffle/seed{fold}/coarse9000.txt'
+# val_file = f'data/new_data/divided/title/shuffle/seed{fold}/fine700.txt,data/new_data/divided/title/shuffle/seed{fold}/coarse1412.txt'
 
-vocab_file = 'data/new_data/vocab/vocab.txt'
+
+vocab_file = 'data/new_data/vocab/vocab.txt' 
 
 
 # dataset 
@@ -82,7 +86,7 @@ val_dataloader = DataLoader(
 # model
 split_config = BertConfig(num_hidden_layers=split_layers)
 fuse_config = BertConfig(num_hidden_layers=fuse_layers, image_dropout=image_dropout)
-model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
+model = DesignFuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand, word_match=True)
 if LOAD_CKPT:
     model.load_state_dict(torch.load(ckpt_file))
 model.cuda()
@@ -118,8 +122,7 @@ def evaluate(model, val_dataloader):
         images, splits, labels = batch 
         images = images.cuda()
         
-        logits = model(images, splits)
-        logits = logits.squeeze(1)
+        logits, word_logits, word_mask = model(images, splits)
         n_loss = loss_fn(logits, labels.float().cuda())
 
         loss_list.append(n_loss.mean().cpu())
@@ -154,8 +157,7 @@ for epoch in range(max_epoch):
         images = images.cuda()
         labels = labels.float().cuda()
         
-        logits = model(images, splits)
-        logits = logits.squeeze(1)
+        logits, word_logits, word_mask = model(images, splits)
 
         # train acc
         if (i+1)%80 == 0:
@@ -163,6 +165,24 @@ for epoch in range(max_epoch):
             correct = 0
             total = 0
             print('Epoch:[{}|{}], Acc:{:.2f}%'.format(epoch, max_epoch, train_acc*100))
+
+            # eval and save mdoel
+            acc, loss = evaluate(model, val_dataloader)
+            print('Acc:{:.2f}%, Loss:{:.5f}'.format(acc*100, loss))
+            if acc > max_acc:
+                max_acc = acc
+                if last_path:
+                    os.remove(last_path)
+                save_path = save_dir + save_name + '_'  + '{:.4f}'.format(acc)+'.pth'
+                last_path = save_path
+                torch.save(model.state_dict(), save_path)
+            if loss < min_loss:
+                min_loss = loss
+                if loss_last_path:
+                    os.remove(loss_last_path)
+                save_path = save_dir + save_name + '_'  + '{:.5f}'.format(loss)+'.pth'
+                loss_last_path = save_path
+                torch.save(model.state_dict(), save_path)
         
         proba = torch.sigmoid(logits.cpu())
         proba[proba>0.5] = 1

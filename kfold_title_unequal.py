@@ -10,13 +10,18 @@ from model.fusemodel import FuseModel, DesignFuseModel
 
 from utils.lr_sched import adjust_learning_rate
 
+
+
+fold = 3
+gpus = '7'
 # fix the seed for reproducibility
-seed = 0
+seed = fold
 torch.manual_seed(seed)
 np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
-gpus = '3'
+
+
 batch_size = 256
 max_epoch = 400
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
@@ -27,10 +32,10 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = 'output/pretrain/title/gate200/'
+save_dir = 'output/pretrain/title/unequal_day4/5fold/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
-save_name = '0l6lexp6'
+save_name = 'fold' + str(fold)
 
 # adjust learning rate
 LR_SCHED = True
@@ -41,21 +46,13 @@ warmup_epochs = 0
 LOAD_CKPT = False
 ckpt_file = ''
 
-# train_file = 'data/new_data/divided/title/shuffle/fine35300.txt,data/new_data/equal_split_word/coarse89588.txt'
-# val_file = 'data/new_data/divided/title/shuffle/fine700.txt,data/new_data/divided/title/shuffle/coarse1412.txt'
+data_dir = os.path.join('data/new_data/divided/title/shuffle', 'seed_'+str(2022+fold))
+train_file = os.path.join(data_dir, 'fine35300.txt') + ',' + 'data/new_data/equal_split_word/coarse89588.txt'
+val_file = os.path.join(data_dir, 'fine700.txt') + ',' + os.path.join(data_dir, 'coarse1412.txt')
 
-# train_file = 'data/new_data/divided/title/fine40000.txt,data/new_data/equal_split_word/coarse89588.txt'
-# val_file = 'data/new_data/divided/title/fine700.txt,data/new_data/divided/title/coarse1412.txt'
-# vocab_dict_file = 'data/new_data/vocab/vocab_dict.json'
-# vocab_file = 'data/new_data/vocab/vocab.txt'
-# attr_dict_file = 'data/new_data/equal_processed_data/dict/attr_relation_dict.json'
-
-train_file = 'data/new_data/equal_split_word_200/divided/title/fine40000.txt,data/new_data/equal_split_word_200/coarse89588.txt'
-val_file = 'data/new_data/equal_split_word_200/divided/title/fine700.txt,data/new_data/equal_split_word_200/divided/title/coarse1412.txt'
-vocab_dict_file = 'data/new_data/equal_split_word_200/vocab/vocab_dict.json'
-vocab_file = 'data/new_data/equal_split_word_200/vocab/vocab.txt'
+vocab_dict_file = 'data/new_data/vocab/vocab_dict.json'
+vocab_file = 'data/new_data/vocab/vocab.txt'
 attr_dict_file = 'data/new_data/equal_processed_data/dict/attr_relation_dict.json'
-
 with open(vocab_dict_file, 'r') as f:
     vocab_dict = json.load(f)
 

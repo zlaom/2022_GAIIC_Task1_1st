@@ -1,13 +1,11 @@
 import os
 import torch 
-import json
 import numpy as np 
 from torch.utils.data import DataLoader
 from tqdm import tqdm 
 
 from model.bert.bertconfig import BertConfig
-from model.fusemodel import FuseModel, DesignFuseModel
-
+from model.fusemodel import DesignFuseModel
 from utils.lr_sched import adjust_learning_rate
 
 # fix the seed for reproducibility
@@ -16,63 +14,53 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
-gpus = '3'
-batch_size = 256
-max_epoch = 400
-os.environ['CUDA_VISIBLE_DEVICES'] = gpus
-
+gpus = '6'
 image_dropout = 0.3
+batch_size = 128
+max_epoch = 100
+
+os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = 'output/pretrain/title/gate200/'
+
+save_dir = 'output/split_finetune/attr/final_fusereplace_mutual/0l6lexp6/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
-save_name = '0l6lexp6'
+save_name = ''
+
+LOAD_CKPT = True
+ckpt_file = 'output/split_pretrain/final_wordmatch_mutual/fusereplace/0l12lexp6/0.9242.pth'
 
 # adjust learning rate
-LR_SCHED = True
-lr = 4e-5
+LR_SCHED = False
+lr = 1e-5
 min_lr = 5e-6
 warmup_epochs = 0
 
-LOAD_CKPT = False
-ckpt_file = ''
 
-# train_file = 'data/new_data/divided/title/shuffle/fine35300.txt,data/new_data/equal_split_word/coarse89588.txt'
-# val_file = 'data/new_data/divided/title/shuffle/fine700.txt,data/new_data/divided/title/shuffle/coarse1412.txt'
+train_file = 'data/equal_split_word/attr/fine10000.txt,data/equal_split_word/attr/coarse20000.txt'
+val_file = 'data/equal_split_word/fine5000.txt,data/equal_split_word/attr/coarse4588.txt'
 
-# train_file = 'data/new_data/divided/title/fine40000.txt,data/new_data/equal_split_word/coarse89588.txt'
-# val_file = 'data/new_data/divided/title/fine700.txt,data/new_data/divided/title/coarse1412.txt'
-# vocab_dict_file = 'data/new_data/vocab/vocab_dict.json'
-# vocab_file = 'data/new_data/vocab/vocab.txt'
-# attr_dict_file = 'data/new_data/equal_processed_data/dict/attr_relation_dict.json'
-
-train_file = 'data/new_data/equal_split_word_200/divided/title/fine40000.txt,data/new_data/equal_split_word_200/coarse89588.txt'
-val_file = 'data/new_data/equal_split_word_200/divided/title/fine700.txt,data/new_data/equal_split_word_200/divided/title/coarse1412.txt'
-vocab_dict_file = 'data/new_data/equal_split_word_200/vocab/vocab_dict.json'
-vocab_file = 'data/new_data/equal_split_word_200/vocab/vocab.txt'
+vocab_file = 'data/new_data/vocab/vocab.txt'
+vocab_dict_file = 'data/new_data/vocab/vocab_dict.json'
 attr_dict_file = 'data/new_data/equal_processed_data/dict/attr_relation_dict.json'
 
-with open(vocab_dict_file, 'r') as f:
-    vocab_dict = json.load(f)
-
-
-# dataset
-from dataset.title_unequal_dataset import FuseReplaceDataset, cls_collate_fn
-dataset = FuseReplaceDataset
-collate_fn = cls_collate_fn
 
 # data
-train_dataset = dataset(train_file, attr_dict_file, vocab_dict, is_train=True)
-val_dataset = dataset(val_file, attr_dict_file, vocab_dict, is_train=False)
+from dataset.keyattrmatch_dataset import AttrMatchDataset, attrmatch_collate_fn
+dataset = AttrMatchDataset
+collate_fn = attrmatch_collate_fn
+
+train_dataset = dataset(train_file, attr_dict_file)
+val_dataset = dataset(val_file, attr_dict_file)
 
 train_dataloader = DataLoader(
         train_dataset,
         batch_size=batch_size,
-        shuffle=False,
+        shuffle=True,
         num_workers=8,
         pin_memory=True,
         drop_last=True,
@@ -88,11 +76,10 @@ val_dataloader = DataLoader(
         collate_fn=collate_fn,
     )
 
-
-# model
+# fuse model
 split_config = BertConfig(num_hidden_layers=split_layers)
 fuse_config = BertConfig(num_hidden_layers=fuse_layers, image_dropout=image_dropout)
-model = FuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand)
+model = DesignFuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand, word_match=True)
 if LOAD_CKPT:
     model.load_state_dict(torch.load(ckpt_file))
 model.cuda()
@@ -110,10 +97,21 @@ def evaluate(model, val_dataloader):
     correct = 0
     total = 0
     for batch in tqdm(val_dataloader):
-        images, splits, labels = batch 
+        images, splits, labels, attr_mask = batch 
         images = images.cuda()
-        logits = model(images, splits)
-        logits = logits.squeeze(1).cpu()
+
+        title_logits, logits, mask = model(images, splits)
+        logits = logits.cpu()
+        
+        _, W = logits.shape
+        labels = labels[:, :W].float()
+        attr_mask = attr_mask[:, :W].float()
+        
+        mask = mask.to(torch.bool)
+        attr_mask = attr_mask.to(torch.bool)
+        attr_mask = attr_mask[mask]
+        logits = logits[mask][attr_mask]
+        labels = labels[mask][attr_mask]
         
         logits = torch.sigmoid(logits)
         logits[logits>0.5] = 1
@@ -137,13 +135,22 @@ for epoch in range(max_epoch):
         optimizer.zero_grad()
         if LR_SCHED:
             lr_now = adjust_learning_rate(optimizer, max_epoch, epoch+1, warmup_epochs, lr, min_lr)
-        images, splits, labels = batch 
+            
+        images, splits, labels, attr_mask = batch 
         
         images = images.cuda()
-        labels = labels.float().cuda()
         
-        logits = model(images, splits)
-        logits = logits.squeeze(1)
+        title_logits, logits, mask = model(images, splits)
+        
+        _, W = logits.shape
+        labels = labels[:, :W].float().cuda()
+        attr_mask = attr_mask[:, :W].float().cuda()
+        
+        mask = mask.to(torch.bool)
+        attr_mask = attr_mask.to(torch.bool)
+        attr_mask = attr_mask[mask]
+        logits = logits[mask][attr_mask]
+        labels = labels[mask][attr_mask]
 
         # train acc
         if (i+1)%200 == 0:
@@ -154,6 +161,7 @@ for epoch in range(max_epoch):
                 print('Epoch:[{}|{}], Acc:{:.2f}%, LR:{:.2e}'.format(epoch, max_epoch, train_acc*100, lr_now))
             else:
                 print('Epoch:[{}|{}], Acc:{:.2f}%'.format(epoch, max_epoch, train_acc*100))
+                            
         proba = torch.sigmoid(logits.cpu())
         proba[proba>0.5] = 1
         proba[proba<=0.5] = 0
@@ -173,6 +181,6 @@ for epoch in range(max_epoch):
         max_acc = acc
         if last_path:
             os.remove(last_path)
-        save_path = save_dir + save_name + '_' + '{:.4f}'.format(acc)+'.pth'
+        save_path = save_dir + save_name + '{:.4f}'.format(acc)+'.pth'
         last_path = save_path
         torch.save(model.state_dict(), save_path)

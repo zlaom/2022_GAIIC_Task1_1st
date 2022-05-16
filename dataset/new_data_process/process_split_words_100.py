@@ -7,24 +7,26 @@ SAVE_DIR = 'data/new_data'
 preprocess_dir = os.path.join(SAVE_DIR, 'equal_processed_data')
 split_word_dir = os.path.join(SAVE_DIR, 'split_word')
 
-equal_split_word_dir = os.path.join(SAVE_DIR, 'equal_split_word')
+equal_split_word_dir = os.path.join(SAVE_DIR, 'equal_split_word_200')
 vocab_dir = os.path.join(SAVE_DIR, 'vocab') # 注意要修改后面的保存文件夹位置
-
+save_vocab_dir = os.path.join(equal_split_word_dir, 'vocab')
 if not os.path.exists(equal_split_word_dir):
     os.makedirs(equal_split_word_dir)
-
+if not os.path.exists(save_vocab_dir):
+    os.makedirs(save_vocab_dir)
+    
 # 两个已有的文件
 attr_dict_file = os.path.join(preprocess_dir, 'attr_to_attrvals.json')
 word_dict_file = os.path.join(vocab_dir, 'word_dict.json')
 
 # 两个要保存的文件
-vocab_dict_save_file = os.path.join(vocab_dir, 'vocab_dict.json')
-vocab_txt_save_file = os.path.join(vocab_dir, 'vocab.txt')
+vocab_dict_save_file = os.path.join(save_vocab_dir, 'vocab_dict.json')
+vocab_txt_save_file = os.path.join(save_vocab_dir, 'vocab.txt')
 
 
 name_list = ['fine50000.txt', 'coarse89588.txt', 'coarse10412.txt']
 
-GATE = 50
+GATE = 200
 # ---------------------生成vocab_dict.json,经过了词频筛选,组合等步骤--------------------- #
 print('generate vocab_dict.json')
 # 读入未处理的词表

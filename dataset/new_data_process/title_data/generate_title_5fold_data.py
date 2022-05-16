@@ -4,8 +4,8 @@ import numpy as np
 import os
 from tqdm import tqdm
 
-# 数据生成
-fine_file = 'data/new_data/equal_split_word/fine50000.txt'
+# 数据生成ZASz
+fine_file = 'data/new_data/ccc ZASz/fine50000.txt'
 coarse_file = 'data/new_data/equal_split_word/coarse10412.txt'
 save_path = 'data/new_data/divided/title/shuffle'
 seed5000 = 2022
