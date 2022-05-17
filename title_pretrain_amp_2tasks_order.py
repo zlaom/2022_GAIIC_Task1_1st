@@ -9,7 +9,8 @@ from model.bert.bertconfig import BertConfig
 from model.fusemodel import DesignFuseModel, FuseModel2TasksNewDropout
 
 from utils.lr_sched import adjust_learning_rate
-
+from torch.cuda import amp 
+ENABLE_AMP = True
 
 seed = 1
 fold_id = 5
@@ -32,10 +33,10 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = f'output/pretrain/title/2tasks_seed/fold{fold_id}/'
+save_dir = f'output/pretrain/title/2tasks_seed/order/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
-save_name = f'fold{fold_id}_seed{seed}'
+save_name = f'order_seed{seed}'
 
 # adjust learning rate
 LR_SCHED = True
@@ -48,11 +49,11 @@ ckpt_file = ''
 
 # order
 # train_file = 'data/new_data/divided/title/fine40000.txt'
-# train_file = 'data/new_data/divided/title/fine40000.txt,data/new_data/equal_split_word/coarse89588.txt'
-# val_file = 'data/new_data/divided/title/fine700.txt,data/new_data/divided/title/coarse1412.txt'
+train_file = 'data/new_data/divided/title/fine40000.txt,data/new_data/equal_split_word/coarse89588.txt'
+val_file = 'data/new_data/divided/title/fine700.txt,data/new_data/divided/title/coarse1412.txt'
 # seed
-train_file = f'data/new_data/divided/title/shuffle/seed{fold_id}/fine40000.txt,data/new_data/equal_split_word/coarse89588.txt'
-val_file = f'data/new_data/divided/title/shuffle/seed{fold_id}/fine700.txt,data/new_data/divided/title/shuffle/seed{fold_id}/coarse1412.txt'
+# train_file = f'data/new_data/divided/title/shuffle/seed{fold_id}/fine40000.txt,data/new_data/equal_split_word/coarse89588.txt'
+# val_file = f'data/new_data/divided/title/shuffle/seed{fold_id}/fine700.txt,data/new_data/divided/title/shuffle/seed{fold_id}/coarse1412.txt'
 # necessary files
 vocab_dict_file = 'data/new_data/vocab/vocab_dict.json'
 vocab_file = 'data/new_data/vocab/vocab.txt'
@@ -105,6 +106,9 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 # loss
 loss_fn = torch.nn.BCEWithLogitsLoss()
 
+# amp
+scaler = amp.GradScaler(enabled=ENABLE_AMP)
+
 # evaluate 
 @torch.no_grad()
 def evaluate(model, val_dataloader):
@@ -115,15 +119,10 @@ def evaluate(model, val_dataloader):
         images, splits, labels, word_labels = batch 
         images = images.cuda()
 
-        logits, word_logits, word_mask = model(images, splits)
-        # word logits process
-        # _, W = word_logits.shape
-        # word_labels = word_labels[:, :W].float().cuda()
-        # word_mask = word_mask.to(torch.bool)
-        # word_logits = word_logits[word_mask]
-        # word_labels = word_labels[word_mask]
+        with amp.autocast(enabled=ENABLE_AMP):
+            logits, word_logits, word_mask = model(images, splits)
         
-        logits = logits.cpu()
+        logits = logits.float().cpu()
         logits = torch.sigmoid(logits)
         logits[logits>0.5] = 1
         logits[logits<=0.5] = 0
@@ -154,16 +153,22 @@ for epoch in range(max_epoch):
         images = images.cuda()
         labels = labels.float().cuda()
         
-        logits, word_logits, word_mask = model(images, splits)
+        with amp.autocast(enabled=ENABLE_AMP):
+            logits, word_logits, word_mask = model(images, splits)
+            # word logits process
+            _, W = word_logits.shape
+            word_labels = word_labels[:, :W].float().cuda()
+            word_mask = word_mask.to(torch.bool)
+            word_logits = word_logits[word_mask]
+            word_labels = word_labels[word_mask]
+            # loss
+            loss = loss_fn(logits, labels) + word_loss_scale * loss_fn(word_logits, word_labels)
+
+        # loss scaler
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
         
-        # word logits process
-        _, W = word_logits.shape
-        word_labels = word_labels[:, :W].float().cuda()
-        word_mask = word_mask.to(torch.bool)
-        word_logits = word_logits[word_mask]
-        word_labels = word_labels[word_mask]
-
-
         # train acc
         if (i+1)%200 == 0:
             train_acc = correct / total
@@ -173,17 +178,17 @@ for epoch in range(max_epoch):
                 print('Epoch:[{}|{}], Acc:{:.2f}%, LR:{:.2e}'.format(epoch, max_epoch, train_acc*100, lr_now))
             else:
                 print('Epoch:[{}|{}], Acc:{:.2f}%'.format(epoch, max_epoch, train_acc*100))
-        proba = torch.sigmoid(logits.cpu())
+        proba = torch.sigmoid(logits.float().cpu())
         proba[proba>0.5] = 1
         proba[proba<=0.5] = 0
         correct += torch.sum(labels.cpu() == proba)
         total += len(labels)
         i += 1
         
-        loss = loss_fn(logits, labels) + word_loss_scale * loss_fn(word_logits, word_labels)
+        
         loss_list.append(loss.mean().cpu())
-        loss.backward()
-        optimizer.step()
+        # loss.backward()
+        # optimizer.step()
         
     acc = evaluate(model, val_dataloader)
     avg_loss = torch.mean(torch.tensor(loss_list)).item()

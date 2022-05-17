@@ -1,1 +1,0 @@
-python dataset/new_data_process/generate_nofeat.py

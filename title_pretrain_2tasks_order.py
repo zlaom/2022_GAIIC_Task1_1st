@@ -32,10 +32,10 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = f'output/pretrain/title/2tasks_seed/fold{fold_id}/'
+save_dir = f'output/pretrain/title/2tasks_seed/order/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
-save_name = f'fold{fold_id}_seed{seed}'
+save_name = f'order_seed{seed}'
 
 # adjust learning rate
 LR_SCHED = True
@@ -48,11 +48,11 @@ ckpt_file = ''
 
 # order
 # train_file = 'data/new_data/divided/title/fine40000.txt'
-# train_file = 'data/new_data/divided/title/fine40000.txt,data/new_data/equal_split_word/coarse89588.txt'
-# val_file = 'data/new_data/divided/title/fine700.txt,data/new_data/divided/title/coarse1412.txt'
+train_file = 'data/new_data/divided/title/fine40000.txt,data/new_data/equal_split_word/coarse89588.txt'
+val_file = 'data/new_data/divided/title/fine700.txt,data/new_data/divided/title/coarse1412.txt'
 # seed
-train_file = f'data/new_data/divided/title/shuffle/seed{fold_id}/fine40000.txt,data/new_data/equal_split_word/coarse89588.txt'
-val_file = f'data/new_data/divided/title/shuffle/seed{fold_id}/fine700.txt,data/new_data/divided/title/shuffle/seed{fold_id}/coarse1412.txt'
+# train_file = f'data/new_data/divided/title/shuffle/seed{fold_id}/fine40000.txt,data/new_data/equal_split_word/coarse89588.txt'
+# val_file = f'data/new_data/divided/title/shuffle/seed{fold_id}/fine700.txt,data/new_data/divided/title/shuffle/seed{fold_id}/coarse1412.txt'
 # necessary files
 vocab_dict_file = 'data/new_data/vocab/vocab_dict.json'
 vocab_file = 'data/new_data/vocab/vocab.txt'
@@ -116,12 +116,6 @@ def evaluate(model, val_dataloader):
         images = images.cuda()
 
         logits, word_logits, word_mask = model(images, splits)
-        # word logits process
-        # _, W = word_logits.shape
-        # word_labels = word_labels[:, :W].float().cuda()
-        # word_mask = word_mask.to(torch.bool)
-        # word_logits = word_logits[word_mask]
-        # word_labels = word_labels[word_mask]
         
         logits = logits.cpu()
         logits = torch.sigmoid(logits)

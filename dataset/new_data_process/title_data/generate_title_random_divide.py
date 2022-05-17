@@ -3,7 +3,7 @@ from tqdm import tqdm
 import json
 import random 
 
-seed = 2
+seed = 9
 
 fine_file = 'data/new_data/equal_split_word/fine50000.txt'
 coarse_neg_file = 'data/new_data/equal_split_word/coarse10412.txt'

@@ -14,7 +14,7 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
-gpus = '6'
+gpus = '3'
 image_dropout = 0.3
 batch_size = 128
 max_epoch = 100
@@ -26,13 +26,13 @@ fuse_layers = 6
 n_img_expand = 6
 
 
-save_dir = 'output/split_finetune/attr/final_fusereplace_mutual/0l6lexp6/'
+save_dir = 'output/split_finetune/attr/2tasks/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = ''
 
 LOAD_CKPT = True
-ckpt_file = 'output/split_pretrain/final_wordmatch_mutual/fusereplace/0l12lexp6/0.9242.pth'
+ckpt_file = 'output/pretrain/title/2tasks_nobug/1rep_2rep_2wordloss/0l6lexp6_loss_0.21046.pth'
 
 # adjust learning rate
 LR_SCHED = False
@@ -40,9 +40,9 @@ lr = 1e-5
 min_lr = 5e-6
 warmup_epochs = 0
 
-
-train_file = 'data/equal_split_word/attr/fine10000.txt,data/equal_split_word/attr/coarse20000.txt'
-val_file = 'data/equal_split_word/fine5000.txt,data/equal_split_word/attr/coarse4588.txt'
+# train_file = 'data/new_data/divided/attr/fine45000.txt'
+train_file = 'data/new_data/divided/title/fine40000.txt,data/new_data/equal_split_word/coarse89588.txt'
+val_file = 'data/new_data/divided/title/fine9000.txt'
 
 vocab_file = 'data/new_data/vocab/vocab.txt'
 vocab_dict_file = 'data/new_data/vocab/vocab_dict.json'
@@ -96,11 +96,13 @@ def evaluate(model, val_dataloader):
     model.eval()
     correct = 0
     total = 0
+    loss_list = []
     for batch in tqdm(val_dataloader):
         images, splits, labels, attr_mask = batch 
         images = images.cuda()
 
         title_logits, logits, mask = model(images, splits)
+        
         logits = logits.cpu()
         
         _, W = logits.shape
@@ -113,6 +115,9 @@ def evaluate(model, val_dataloader):
         logits = logits[mask][attr_mask]
         labels = labels[mask][attr_mask]
         
+        n_loss = loss_fn(logits, labels.float())
+        loss_list.append(n_loss.mean())
+
         logits = torch.sigmoid(logits)
         logits[logits>0.5] = 1
         logits[logits<=0.5] = 0
@@ -121,7 +126,8 @@ def evaluate(model, val_dataloader):
         total += len(labels)
         
     acc = correct / total
-    return acc.item()
+    loss_list = torch.mean(torch.tensor(loss_list))
+    return acc.item(), loss_list.item()
 
 
 max_acc = 0
@@ -174,8 +180,8 @@ for epoch in range(max_epoch):
         loss.backward()
         optimizer.step()
         
-    acc = evaluate(model, val_dataloader)
-    print(acc)
+    acc, loss = evaluate(model, val_dataloader)
+    print('Acc:{:.2f}%, Loss:{:.5f}'.format(acc*100, loss))
 
     if acc > max_acc:
         max_acc = acc

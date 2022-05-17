@@ -49,7 +49,7 @@ class AttrMatchDataset(Dataset):
                 split[attr_index] = new_attr
                 split_label[attr_index] = 0 # 标签不匹配
             else:
-                if random.random() < 0.1: # 正例增强
+                if random.random() < 0.25: # 正例增强
                     if self.relation_dict[attr]['equal_attr']:
                         new_attr = random.sample(self.relation_dict[attr]['equal_attr'], 1)[0]
                         split[attr_index] = new_attr
