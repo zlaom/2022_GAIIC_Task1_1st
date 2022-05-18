@@ -6,13 +6,13 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm 
 
 from model.bert.bertconfig import BertConfig
-from model.fusemodel import DesignFuseModel
+from model.fusemodel import DesignFuseModel, DesignFuseModelMean
 
 from utils.lr_sched import adjust_learning_rate
-
+from torch.cuda import amp 
+ENABLE_AMP = True
 
 seed = 0
-fold_id = 8
 gpus = '2'
 
 image_dropout = 0.3
@@ -24,18 +24,26 @@ np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
 batch_size = 256
-max_epoch = 400
+max_epoch = 100
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 
 split_layers = 0
-fuse_layers = 6
+fuse_layers = 4
 n_img_expand = 6
 
-save_dir = f'output/pretrain/title/2tasks_seed/fold{fold_id}/'
+# hidden_size = 768
+# num_attention_heads = 12
+# intermediate_size = hidden_size * 4
+
+hidden_size = 384
+num_attention_heads = 6
+intermediate_size = hidden_size * 4
+
+save_dir = f'output/pretrain/title/2tasks_research/param/4l6exp_384hidden_0.5dis/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
-save_name = f'fold{fold_id}_seed{seed}'
+save_name = f'order_seed{seed}'
 
 # adjust learning rate
 LR_SCHED = True
@@ -48,11 +56,11 @@ ckpt_file = ''
 
 # order
 # train_file = 'data/new_data/divided/title/fine40000.txt'
-# train_file = 'data/new_data/divided/title/fine40000.txt,data/new_data/equal_split_word/coarse89588.txt'
-# val_file = 'data/new_data/divided/title/fine700.txt,data/new_data/divided/title/coarse1412.txt'
+train_file = 'data/new_data/divided/title/fine40000.txt,data/new_data/equal_split_word/coarse89588.txt'
+val_file = 'data/new_data/divided/title/fine700.txt,data/new_data/divided/title/coarse1412.txt'
 # seed
-train_file = f'data/new_data/divided/title/shuffle/seed{fold_id}/fine40000.txt,data/new_data/equal_split_word/coarse89588.txt'
-val_file = f'data/new_data/divided/title/shuffle/seed{fold_id}/fine700.txt,data/new_data/divided/title/shuffle/seed{fold_id}/coarse1412.txt'
+# train_file = f'data/new_data/divided/title/shuffle/seed{fold_id}/fine40000.txt,data/new_data/equal_split_word/coarse89588.txt'
+# val_file = f'data/new_data/divided/title/shuffle/seed{fold_id}/fine700.txt,data/new_data/divided/title/shuffle/seed{fold_id}/coarse1412.txt'
 # necessary files
 vocab_dict_file = 'data/new_data/vocab/vocab_dict.json'
 vocab_file = 'data/new_data/vocab/vocab.txt'
@@ -63,8 +71,8 @@ with open(vocab_dict_file, 'r') as f:
 
 
 # dataset
-from dataset.title_unequal_2tasks_dataset import FuseReplaceDataset, cls_collate_fn
-dataset = FuseReplaceDataset
+from dataset.title_unequal_2tasks_dataset import FuseReplaceDataset, DiscreteFuseReplaceDataset, cls_collate_fn
+dataset = DiscreteFuseReplaceDataset
 collate_fn = cls_collate_fn
 
 # data
@@ -92,8 +100,8 @@ val_dataloader = DataLoader(
 
 
 # model
-split_config = BertConfig(num_hidden_layers=split_layers)
-fuse_config = BertConfig(num_hidden_layers=fuse_layers, image_dropout=image_dropout)
+split_config = BertConfig(num_hidden_layers=split_layers, hidden_size=hidden_size, num_attention_heads=num_attention_heads, intermediate_size=intermediate_size)
+fuse_config = BertConfig(num_hidden_layers=fuse_layers, image_dropout=image_dropout, hidden_size=hidden_size, num_attention_heads=num_attention_heads, intermediate_size=intermediate_size)
 model = DesignFuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand, word_match=True)
 if LOAD_CKPT:
     model.load_state_dict(torch.load(ckpt_file))
@@ -105,25 +113,27 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 # loss
 loss_fn = torch.nn.BCEWithLogitsLoss()
 
+# amp
+scaler = amp.GradScaler(enabled=ENABLE_AMP)
+
 # evaluate 
 @torch.no_grad()
 def evaluate(model, val_dataloader):
     model.eval()
     correct = 0
     total = 0
+    loss_list = []
     for batch in tqdm(val_dataloader):
         images, splits, labels, word_labels = batch 
         images = images.cuda()
 
-        logits, word_logits, word_mask = model(images, splits)
-        # word logits process
-        # _, W = word_logits.shape
-        # word_labels = word_labels[:, :W].float().cuda()
-        # word_mask = word_mask.to(torch.bool)
-        # word_logits = word_logits[word_mask]
-        # word_labels = word_labels[word_mask]
-        
-        logits = logits.cpu()
+        with amp.autocast(enabled=ENABLE_AMP):
+            logits, word_logits, word_mask = model(images, splits)
+            n_loss = loss_fn(logits, labels.float().cuda())
+
+        loss_list.append(n_loss.mean().cpu())
+
+        logits = logits.float().cpu()
         logits = torch.sigmoid(logits)
         logits[logits>0.5] = 1
         logits[logits<=0.5] = 0
@@ -132,7 +142,8 @@ def evaluate(model, val_dataloader):
         total += len(labels)
         
     acc = correct / total
-    return acc.item()
+    loss_list = torch.mean(torch.tensor(loss_list))
+    return acc.item(), loss_list.item()
 
 
 max_acc = 0
@@ -143,8 +154,6 @@ correct = 0
 total = 0
 for epoch in range(max_epoch):
     model.train()
-
-    loss_list = []
     for i, batch in enumerate(train_dataloader):
         optimizer.zero_grad()
         if LR_SCHED:
@@ -154,16 +163,22 @@ for epoch in range(max_epoch):
         images = images.cuda()
         labels = labels.float().cuda()
         
-        logits, word_logits, word_mask = model(images, splits)
+        with amp.autocast(enabled=ENABLE_AMP):
+            logits, word_logits, word_mask = model(images, splits)
+            # word logits process
+            _, W = word_logits.shape
+            word_labels = word_labels[:, :W].float().cuda()
+            word_mask = word_mask.to(torch.bool)
+            word_logits = word_logits[word_mask]
+            word_labels = word_labels[word_mask]
+            # loss
+            loss = loss_fn(logits, labels) + word_loss_scale * loss_fn(word_logits, word_labels)
+
+        # loss scaler
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
         
-        # word logits process
-        _, W = word_logits.shape
-        word_labels = word_labels[:, :W].float().cuda()
-        word_mask = word_mask.to(torch.bool)
-        word_logits = word_logits[word_mask]
-        word_labels = word_labels[word_mask]
-
-
         # train acc
         if (i+1)%200 == 0:
             train_acc = correct / total
@@ -173,35 +188,29 @@ for epoch in range(max_epoch):
                 print('Epoch:[{}|{}], Acc:{:.2f}%, LR:{:.2e}'.format(epoch, max_epoch, train_acc*100, lr_now))
             else:
                 print('Epoch:[{}|{}], Acc:{:.2f}%'.format(epoch, max_epoch, train_acc*100))
-        proba = torch.sigmoid(logits.cpu())
+        proba = torch.sigmoid(logits.float().cpu())
         proba[proba>0.5] = 1
         proba[proba<=0.5] = 0
         correct += torch.sum(labels.cpu() == proba)
         total += len(labels)
         i += 1
-        
-        loss = loss_fn(logits, labels) + word_loss_scale * loss_fn(word_logits, word_labels)
-        loss_list.append(loss.mean().cpu())
-        loss.backward()
-        optimizer.step()
-        
-    acc = evaluate(model, val_dataloader)
-    avg_loss = torch.mean(torch.tensor(loss_list)).item()
+    
+    # evaluate and save
+    acc, avg_loss = evaluate(model, val_dataloader)
     print('Acc:{:.2f}%, Loss:{:.5f}'.format(acc*100, avg_loss))
     
     if acc > max_acc:
         max_acc = acc
         if last_path:
             os.remove(last_path)
-        save_path = save_dir + save_name + '_acc' + '{:.4f}'.format(acc) + '_loss'  + '{:.5f}'.format(avg_loss) + '.pth'
+        save_path = save_dir + save_name + '_acc' + '{:.4f}'.format(acc) + '.pth'
         last_path = save_path
         torch.save(model.state_dict(), save_path)
-    
     
     # if avg_loss < min_loss:
     #     min_loss = avg_loss
     #     if loss_last_path:
     #         os.remove(loss_last_path)
-    #     save_path = save_dir + save_name + '_loss_'  + '{:.5f}'.format(avg_loss)+'.pth'
+    #     save_path = save_dir + save_name + '_loss_'  + '{:.5f}'.format(avg_loss) + '.pth'
     #     loss_last_path = save_path
     #     torch.save(model.state_dict(), save_path)

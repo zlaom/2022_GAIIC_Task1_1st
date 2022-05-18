@@ -5,34 +5,26 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm 
 
 from model.bert.bertconfig import BertConfig
-from model.fusemodel import DesignFuseModel
+from model.fusemodel import DesignFuseModel, DesignFuseModelMean
 
 from utils.lr_sched import adjust_learning_rate
-import argparse 
-
-parser = argparse.ArgumentParser('title_2tasks_finetune', add_help=False)
-parser.add_argument('--gpus', type=str)
-parser.add_argument('--seed', type=int)
-parser.add_argument('--pretrain_seed', type=int)
-parser.add_argument('--ckpt_file', type=str)
-args = parser.parse_args()   
 
 # fix the seed for reproducibility
-seed = args.seed
+seed = 0
 torch.manual_seed(seed)
 np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
-pretrain_seed = args.pretrain_seed
-
+pretrain_seed = 0
+# fold_id = 5
 
 # configuration
-gpus = args.gpus
+gpus = '3'
 batch_size = 64
-max_epoch = 2
+max_epoch = 4
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
-image_dropout = 0.0
+image_dropout = 0.2
 
 split_layers = 0
 fuse_layers = 6
@@ -45,14 +37,14 @@ lr = 2e-5
 min_lr = 1e-5
 warmup_epochs = 0
 
-save_dir = f'output/finetune/title/2tasks_seed/order/seed{pretrain_seed}/'
+save_dir = f'output/finetune/title/2tasks_research/order/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = f'order_seed{pretrain_seed}_seed{seed}'
 
 FREEZE = False
 LOAD_CKPT = True
-ckpt_file = args.ckpt_file
+ckpt_file = 'output/pretrain/title/2tasks_nobug/1rep_2rep_2wordloss/0l6lexp6_acc_0.9318.pth'
 
 # order
 train_file = 'data/new_data/divided/title/fine9000.txt,data/new_data/divided/title/coarse9000.txt,data/new_data/divided/title/coarse9000.txt'
@@ -180,13 +172,13 @@ for epoch in range(max_epoch):
             # eval and save mdoel
             acc, loss = evaluate(model, val_dataloader)
             print('Acc:{:.2f}%, Loss:{:.5f}'.format(acc*100, loss))
-            # if acc > max_acc:
-            #     max_acc = acc
-            #     if last_path:
-            #         os.remove(last_path)
-            #     save_path = save_dir + save_name + '_'  + '{:.4f}'.format(acc)+'.pth'
-            #     last_path = save_path
-            #     torch.save(model.state_dict(), save_path)
+            if acc > max_acc:
+                max_acc = acc
+                if last_path:
+                    os.remove(last_path)
+                save_path = save_dir + save_name + '_'  + '{:.4f}'.format(acc)+'.pth'
+                last_path = save_path
+                torch.save(model.state_dict(), save_path)
             if loss < min_loss:
                 min_loss = loss
                 if loss_last_path:
@@ -210,13 +202,13 @@ for epoch in range(max_epoch):
     # eval and save mdoel
     acc, loss = evaluate(model, val_dataloader)
     print('Acc:{:.2f}%, Loss:{:.5f}'.format(acc*100, loss))
-    # if acc > max_acc:
-    #     max_acc = acc
-    #     if last_path:
-    #         os.remove(last_path)
-    #     save_path = save_dir + save_name + '_'  + '{:.4f}'.format(acc)+'.pth'
-    #     last_path = save_path
-    #     torch.save(model.state_dict(), save_path)
+    if acc > max_acc:
+        max_acc = acc
+        if last_path:
+            os.remove(last_path)
+        save_path = save_dir + save_name + '_'  + '{:.4f}'.format(acc)+'.pth'
+        last_path = save_path
+        torch.save(model.state_dict(), save_path)
     if loss < min_loss:
         min_loss = loss
         if loss_last_path:

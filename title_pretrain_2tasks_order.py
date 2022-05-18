@@ -6,14 +6,14 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm 
 
 from model.bert.bertconfig import BertConfig
-from model.fusemodel import DesignFuseModel, FuseModel2TasksNewDropout
+from model.fusemodel import DesignFuseModel
 
 from utils.lr_sched import adjust_learning_rate
 
 
 seed = 1
 fold_id = 5
-gpus = '3'
+gpus = '1'
 
 image_dropout = 0.3
 word_loss_scale = 2

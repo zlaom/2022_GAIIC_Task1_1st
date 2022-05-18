@@ -12,8 +12,8 @@ from utils.lr_sched import adjust_learning_rate
 
 
 seed = 0
-fold_id = 8
-gpus = '2'
+fold_id = 5
+gpus = '1'
 
 image_dropout = 0.3
 word_loss_scale = 2
@@ -32,7 +32,7 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = f'output/pretrain/title/2tasks_seed/fold{fold_id}/'
+save_dir = f'temp/tmp_data/lhq_output/title_pretrain/fold{fold_id}/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = f'fold{fold_id}_seed{seed}'
@@ -46,17 +46,14 @@ warmup_epochs = 0
 LOAD_CKPT = False
 ckpt_file = ''
 
-# order
-# train_file = 'data/new_data/divided/title/fine40000.txt'
-# train_file = 'data/new_data/divided/title/fine40000.txt,data/new_data/equal_split_word/coarse89588.txt'
-# val_file = 'data/new_data/divided/title/fine700.txt,data/new_data/divided/title/coarse1412.txt'
+
 # seed
-train_file = f'data/new_data/divided/title/shuffle/seed{fold_id}/fine40000.txt,data/new_data/equal_split_word/coarse89588.txt'
-val_file = f'data/new_data/divided/title/shuffle/seed{fold_id}/fine700.txt,data/new_data/divided/title/shuffle/seed{fold_id}/coarse1412.txt'
+train_file = f'temp/tmp_data/lhq_data/divided/title/seed{fold_id}/fine40000.txt,temp/tmp_data/lhq_data/equal_split_word/coarse89588.txt'
+val_file = f'temp/tmp_data/lhq_data/divided/title/seed{fold_id}/fine700.txt,temp/tmp_data/lhq_data/divided/title/seed{fold_id}/coarse1412.txt'
 # necessary files
-vocab_dict_file = 'data/new_data/vocab/vocab_dict.json'
-vocab_file = 'data/new_data/vocab/vocab.txt'
-attr_dict_file = 'data/new_data/equal_processed_data/dict/attr_relation_dict.json'
+vocab_dict_file = 'temp/tmp_data/lhq_data/vocab/vocab_dict.json'
+vocab_file = 'temp/tmp_data/lhq_data/vocab/vocab.txt'
+attr_dict_file = 'temp/tmp_data/lhq_data/dict/attr_relation_dict.json'
 
 with open(vocab_dict_file, 'r') as f:
     vocab_dict = json.load(f)
