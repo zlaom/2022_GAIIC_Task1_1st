@@ -3,8 +3,6 @@ import itertools
 import json
 import os
 
-from attr import attr
-
 
 DATA_DIR = "data/contest_data"
 SAVE_DIR = "data/tmp_data/"

@@ -14,6 +14,8 @@ from utils.lr_sched import adjust_learning_rate
 # fuse model
 from model.attr_mlp import (
     CatModel,
+    DoubleCatModel,
+    DoubleCatModel2,
     AttenModel,
     SeAttrIdMatch1,
     SeAttrIdMatch2,
@@ -30,27 +32,27 @@ import argparse
 parser = argparse.ArgumentParser("train_attr", add_help=False)
 parser.add_argument("--gpus", default="0", type=str)
 parser.add_argument("--fold", default=10, type=int)
-parser.add_argument("--fold_ids", nargs="+", type=int)
+parser.add_argument("--fold_ids", default=[0], nargs="+", type=int)
 args = parser.parse_args()
 
 print(f"{args.fold_ids} \n")
 
 # fix the seed for reproducibility
-seed = 0
+seed = 1212
 torch.manual_seed(seed)
 np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
 batch_size = 256
-max_epoch = 80
-eval_num = 1
+max_epoch = 60
+eval_num = 3
 os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
 
-pos_rate = 0.45
+pos_rate = 0.47
 dropout = 0.3
 threshold = 0.5
 
-root_dir = f"data/model_data/unequal_attr/re_cat_mlp_{args.fold}fold_e{max_epoch}_b{batch_size}_drop{dropout}_pos{pos_rate}/"
+root_dir = f"data/model_data/unequal_attr/final_doubel2_cat_origin_mlp_{args.fold}fold_e{max_epoch}_b{batch_size}_drop{dropout}_pos{pos_rate}/"
 # adjust learning rate
 LR_SCHED = True
 lr = 5e-4
@@ -101,6 +103,8 @@ with open(fine50000, "r") as f:
                 new_item["attr_value"] = attr_value
                 new_item["label"] = 1
                 all_item_data.append(new_item)
+        # if len(all_item_data) > 2000:
+        #     break
 
 all_item_data = np.array(all_item_data)
 
@@ -190,7 +194,7 @@ for fold_id, (train_index, test_index) in enumerate(kf.split(all_item_data)):
             collate_fn=collate_fn,
         )
 
-        model = CatModel(attr_num=80, dropout=dropout)
+        model = DoubleCatModel2(attr_num=80, dropout=dropout)
         print("param num", sum(param.numel() for param in model.parameters()))
         # exit()
         model.cuda()
@@ -216,14 +220,17 @@ for fold_id, (train_index, test_index) in enumerate(kf.split(all_item_data)):
                 attr_ids = attr_ids.cuda()
                 soft_labels = soft_labels.float().cuda()
                 labels = labels.float()
-                logits = model(images, attr_ids)
+                logits1, logits2 = model(images, attr_ids)
+                logits = (logits1 + logits2) / 2
+                loss1 = (torch.sigmoid(logits1) - torch.sigmoid(logits2)) ** 2
 
                 predicts = torch.sigmoid(logits.cpu())
 
                 predicts[predicts > threshold] = 1
                 predicts[predicts <= threshold] = 0
 
-                loss = loss_fn(logits, soft_labels)
+                loss2 = loss_fn(logits, soft_labels)
+                loss = loss2 + 0.1 * loss1
                 loss_list.append(loss.mean().cpu())
 
                 correct += torch.sum(labels == predicts)
@@ -253,7 +260,9 @@ for fold_id, (train_index, test_index) in enumerate(kf.split(all_item_data)):
                 attr_ids = attr_ids.cuda()
                 soft_labels = soft_labels.float().cuda()
                 labels = labels.float()
-                logits = model(images, attr_ids)
+                logits1, logits2 = model(images, attr_ids)
+                logits = (logits1 + logits2) / 2
+                loss1 = (torch.sigmoid(logits1) - torch.sigmoid(logits2)) ** 2
 
                 # train acc
                 if (i + 1) % 100 == 0:
@@ -281,7 +290,9 @@ for fold_id, (train_index, test_index) in enumerate(kf.split(all_item_data)):
                 total += len(labels)
                 i += 1
 
-                loss = loss_fn(logits, soft_labels)
+                loss2 = loss_fn(logits, soft_labels)
+
+                loss = loss2 + 0.1 * loss1.mean()
 
                 loss.backward()
                 optimizer.step()
