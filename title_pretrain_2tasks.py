@@ -11,9 +11,9 @@ from model.fusemodel import DesignFuseModel
 from utils.lr_sched import adjust_learning_rate
 
 
-seed = 0
-fold_id = 8
-gpus = '2'
+seed = 11
+fold_id = 3
+gpus = '1'
 
 image_dropout = 0.3
 word_loss_scale = 2
@@ -32,7 +32,8 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = f'output/pretrain/title/2tasks_seed/fold{fold_id}/'
+# save_dir = f'output/pretrain/title/2tasks_seed/fold{fold_id}/'
+save_dir = f'output/pretrain/title/2tasks_day19/fold{fold_id}/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = f'fold{fold_id}_seed{seed}'
@@ -63,7 +64,7 @@ with open(vocab_dict_file, 'r') as f:
 
 
 # dataset
-from dataset.title_unequal_2tasks_dataset import FuseReplaceDataset, cls_collate_fn
+from dataset.title_unequal_2tasks_dataset import FuseReplaceDataset, DiscreteFuseReplaceDataset, cls_collate_fn
 dataset = FuseReplaceDataset
 collate_fn = cls_collate_fn
 

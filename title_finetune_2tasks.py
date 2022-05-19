@@ -47,7 +47,7 @@ lr = 2e-5
 min_lr = 1e-5
 warmup_epochs = 0
 
-save_dir = f'output/finetune/title/2tasks_seed/fold{fold_id}/seed{pretrain_seed}/'
+save_dir = f'output/finetune/title/train_mode/fold{fold_id}/seed{pretrain_seed}/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = f'fold{fold_id}_seed{pretrain_seed}_seed{seed}'
@@ -173,7 +173,7 @@ for epoch in range(max_epoch):
         logits, word_logits, word_mask = model(images, splits)
 
         # train acc
-        if (i+1)%80 == 0:
+        if (i+1)%20 == 0:
             train_acc = correct / total
             correct = 0
             total = 0

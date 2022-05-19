@@ -14,6 +14,7 @@ ENABLE_AMP = True
 
 seed = 0
 gpus = '2'
+fold_id = 3
 
 image_dropout = 0.3
 word_loss_scale = 2
@@ -24,13 +25,13 @@ np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
 batch_size = 256
-max_epoch = 100
+max_epoch = 400
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 
 split_layers = 0
-fuse_layers = 4
-n_img_expand = 6
+fuse_layers = 6
+n_img_expand = 8
 
 # hidden_size = 768
 # num_attention_heads = 12
@@ -40,9 +41,11 @@ hidden_size = 384
 num_attention_heads = 6
 intermediate_size = hidden_size * 4
 
-save_dir = f'output/pretrain/title/2tasks_research/param/4l6exp_384hidden_0.5dis/'
+# save_dir = f'output/pretrain/title/2tasks_day19/fold{fold_id}_amp_4l/'
+save_dir = f'output/pretrain/title/2tasks_day19/order/amp_6l8exp_384/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
+# save_name = f'fold{fold_id}_seed{seed}'
 save_name = f'order_seed{seed}'
 
 # adjust learning rate
@@ -72,7 +75,7 @@ with open(vocab_dict_file, 'r') as f:
 
 # dataset
 from dataset.title_unequal_2tasks_dataset import FuseReplaceDataset, DiscreteFuseReplaceDataset, cls_collate_fn
-dataset = DiscreteFuseReplaceDataset
+dataset = FuseReplaceDataset
 collate_fn = cls_collate_fn
 
 # data

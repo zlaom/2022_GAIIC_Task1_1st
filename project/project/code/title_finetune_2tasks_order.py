@@ -10,7 +10,7 @@ from model.fusemodel import DesignFuseModel
 from utils.lr_sched import adjust_learning_rate
 import argparse 
 
-parser = argparse.ArgumentParser('title_2tasks_finetune', add_help=False)
+parser = argparse.ArgumentParser('', add_help=False)
 parser.add_argument('--gpus', type=str)
 parser.add_argument('--seed', type=int)
 parser.add_argument('--pretrain_seed', type=int)
@@ -45,28 +45,23 @@ lr = 2e-5
 min_lr = 1e-5
 warmup_epochs = 0
 
-save_dir = f'output/finetune/title/2tasks_seed/order/seed{pretrain_seed}/'
+save_dir = f'temp/tmp_data/lhq_output/title_finetune/order/seed{pretrain_seed}/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = f'order_seed{pretrain_seed}_seed{seed}'
 
-FREEZE = False
 LOAD_CKPT = True
 ckpt_file = args.ckpt_file
 
 # order
-train_file = 'data/new_data/divided/title/fine9000.txt,data/new_data/divided/title/coarse9000.txt,data/new_data/divided/title/coarse9000.txt'
-val_file = 'data/new_data/divided/title/fine700.txt,data/new_data/divided/title/coarse1412.txt'
-# seed
-# train_file = f'data/new_data/divided/title/shuffle/seed{fold_id}/fine9000.txt,data/new_data/divided/title/shuffle/seed{fold_id}/coarse9000.txt,data/new_data/divided/title/shuffle/seed{fold_id}/coarse9000.txt'
-# val_file = f'data/new_data/divided/title/shuffle/seed{fold_id}/fine700.txt,data/new_data/divided/title/shuffle/seed{fold_id}/coarse1412.txt'
+train_file = 'temp/tmp_data/lhq_data/divided/title/order/fine9000.txt,temp/tmp_data/lhq_data/divided/title/order/coarse9000.txt,temp/tmp_data/lhq_data/divided/title/order/coarse9000.txt'
+val_file = 'temp/tmp_data/lhq_data/divided/title/order/fine700.txt,temp/tmp_data/lhq_data/divided/title/order/coarse1412.txt'
 
-
-vocab_file = 'data/new_data/vocab/vocab.txt' 
+vocab_file = 'temp/tmp_data/lhq_data/vocab/vocab.txt' 
 
 
 # dataset 
-from dataset.clsmatch_dataset import ITMDataset, ITMAugDataset, cls_collate_fn
+from dataset.clsmatch_dataset import ITMDataset, cls_collate_fn
 dataset = ITMDataset
 collate_fn = cls_collate_fn
 
@@ -100,20 +95,6 @@ model = DesignFuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_im
 if LOAD_CKPT:
     model.load_state_dict(torch.load(ckpt_file))
 model.cuda()
-
-# freezing
-if FREEZE:
-    unfreeze_layers = ['cls_token', 'head']
-    for name, param in model.named_parameters():
-        param.requires_grad = False
-        for i in unfreeze_layers:
-            if i in name:
-                param.requires_grad = True
-                break
-
-    # for name, param in model.named_parameters():
-    # 	if param.requires_grad:
-    # 		print(name,param.size())
     
 # optimizer 
 optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
@@ -146,7 +127,7 @@ def evaluate(model, val_dataloader):
         
     acc = correct / total
     loss_list = torch.mean(torch.tensor(loss_list))
-    model.train()
+    # model.train()
     return acc.item(), loss_list.item()
 
 
