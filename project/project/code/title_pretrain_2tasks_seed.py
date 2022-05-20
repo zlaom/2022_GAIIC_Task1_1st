@@ -12,8 +12,8 @@ from utils.lr_sched import adjust_learning_rate
 
 
 seed = 0
-fold_id = 5
-gpus = '1'
+fold_id = 3
+gpus = '2'
 
 image_dropout = 0.3
 word_loss_scale = 2

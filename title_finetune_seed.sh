@@ -18,10 +18,10 @@ done
 
 # order
 # PRETRAIN_SEED=0
-# GPUS='1'
+# GPUS='3'
 # CKPT_FILE='output/pretrain/title/2tasks_nobug/1rep_2rep_2wordloss/0l6lexp6_acc_0.9318.pth'
 
-# for SEED in 0 1 2 3 4
+# for SEED in 0 1 2 3 4 11 43
 # do
 #     echo "seed is: ${SEED}"
 #     python title_finetune_2tasks_order.py \

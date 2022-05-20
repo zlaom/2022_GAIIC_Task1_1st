@@ -47,12 +47,12 @@ lr = 2e-5
 min_lr = 1e-5
 warmup_epochs = 0
 
-save_dir = f'output/finetune/title/train_mode/fold{fold_id}/seed{pretrain_seed}/'
+save_dir = f'output/finetune/title/final_finetune/fold{fold_id}_freeze_splitbert/seed{pretrain_seed}/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = f'fold{fold_id}_seed{pretrain_seed}_seed{seed}'
 
-FREEZE = False
+FREEZE = True
 LOAD_CKPT = True
 ckpt_file = args.ckpt_file
 
@@ -68,7 +68,7 @@ vocab_file = 'data/new_data/vocab/vocab.txt'
 
 
 # dataset 
-from dataset.clsmatch_dataset import ITMDataset, ITMAugDataset, cls_collate_fn
+from dataset.clsmatch_dataset import ITMDataset, cls_collate_fn
 dataset = ITMDataset
 collate_fn = cls_collate_fn
 
@@ -105,20 +105,23 @@ model.cuda()
 
 # freezing
 if FREEZE:
-    unfreeze_layers = ['cls_token', 'head']
+    freeze_layers = ['splitbert']
     for name, param in model.named_parameters():
-        param.requires_grad = False
-        for i in unfreeze_layers:
+        for i in freeze_layers:
             if i in name:
-                param.requires_grad = True
+                param.requires_grad = False
                 break
+
+    for name, param in model.named_parameters():
+    	if param.requires_grad==False:
+    		print(name,param.size())
 
     # for name, param in model.named_parameters():
     # 	if param.requires_grad:
     # 		print(name,param.size())
     
 # optimizer 
-optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=lr)
 
 # loss
 loss_fn = torch.nn.BCEWithLogitsLoss()

@@ -10,7 +10,7 @@ from model.fusemodel import DesignFuseModel
 from utils.lr_sched import adjust_learning_rate
 import argparse 
 
-parser = argparse.ArgumentParser('title_2tasks_finetune', add_help=False)
+parser = argparse.ArgumentParser('', add_help=False)
 parser.add_argument('--gpus', type=str)
 parser.add_argument('--seed', type=int)
 parser.add_argument('--pretrain_seed', type=int)
@@ -45,7 +45,7 @@ lr = 2e-5
 min_lr = 1e-5
 warmup_epochs = 0
 
-save_dir = f'output/finetune/title/final_finetune/order_freeze_splitbert/'
+save_dir = f'temp/tmp_data/lhq_output/title_finetune_freeze_nobug/order/seed{pretrain_seed}/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = f'order_seed{pretrain_seed}_seed{seed}'
@@ -55,14 +55,10 @@ LOAD_CKPT = True
 ckpt_file = args.ckpt_file
 
 # order
-train_file = 'data/new_data/divided/title/fine9000.txt,data/new_data/divided/title/coarse9000.txt,data/new_data/divided/title/coarse9000.txt'
-val_file = 'data/new_data/divided/title/fine700.txt,data/new_data/divided/title/coarse1412.txt'
-# seed
-# train_file = f'data/new_data/divided/title/shuffle/seed{fold_id}/fine9000.txt,data/new_data/divided/title/shuffle/seed{fold_id}/coarse9000.txt,data/new_data/divided/title/shuffle/seed{fold_id}/coarse9000.txt'
-# val_file = f'data/new_data/divided/title/shuffle/seed{fold_id}/fine700.txt,data/new_data/divided/title/shuffle/seed{fold_id}/coarse1412.txt'
+train_file = 'temp/tmp_data/lhq_data/divided/title/order/fine9000.txt,temp/tmp_data/lhq_data/divided/title/order/coarse9000.txt,temp/tmp_data/lhq_data/divided/title/order/coarse9000.txt'
+val_file = 'temp/tmp_data/lhq_data/divided/title/order/fine700.txt,temp/tmp_data/lhq_data/divided/title/order/coarse1412.txt'
 
-
-vocab_file = 'data/new_data/vocab/vocab.txt' 
+vocab_file = 'temp/tmp_data/lhq_data/vocab/vocab.txt' 
 
 
 # dataset 
@@ -113,10 +109,9 @@ if FREEZE:
     for name, param in model.named_parameters():
     	if param.requires_grad==False:
     		print(name,param.size())
-    
+      
 # optimizer 
-# optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
-optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=lr)
+optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
 # loss
 loss_fn = torch.nn.BCEWithLogitsLoss()

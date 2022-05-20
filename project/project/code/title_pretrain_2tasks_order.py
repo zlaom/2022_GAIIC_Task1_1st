@@ -12,7 +12,7 @@ from utils.lr_sched import adjust_learning_rate
 
 
 seed = 0
-gpus = '0'
+gpus = '3'
 
 image_dropout = 0.3
 word_loss_scale = 2
@@ -31,7 +31,7 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = f'temp/tmp_data/lhq_output/title_pretrain/order/'
+save_dir = f'temp/tmp_data/lhq_output/title_pretrain/test/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = f'order_seed{seed}'

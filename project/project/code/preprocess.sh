@@ -10,4 +10,6 @@
 
 # python project/code/dataset/data_divide/random_divide_title_data.py --seed 0
 
-python project/code/dataset/data_divide/random_divide_title_data.py --seed 5
+# python project/code/dataset/data_divide/random_divide_title_data.py --seed 5
+
+python project/code/dataset/data_divide/random_divide_title_data.py --seed 3

@@ -13,7 +13,7 @@ from utils.lr_sched import adjust_learning_rate
 
 seed = 1
 fold_id = 5
-gpus = '1'
+gpus = '0'
 
 image_dropout = 0.3
 word_loss_scale = 2
@@ -32,7 +32,8 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-save_dir = f'output/pretrain/title/2tasks_seed/order/'
+# save_dir = f'output/pretrain/title/2tasks_seed/order/'
+save_dir = f'output/pretrain/title/2tasks_test/order/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = f'order_seed{seed}'
