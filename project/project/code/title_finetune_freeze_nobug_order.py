@@ -111,7 +111,8 @@ if FREEZE:
     		print(name,param.size())
       
 # optimizer 
-optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+# optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=lr)
 
 # loss
 loss_fn = torch.nn.BCEWithLogitsLoss()
