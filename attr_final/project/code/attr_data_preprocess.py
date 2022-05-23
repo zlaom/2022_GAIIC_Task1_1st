@@ -1,8 +1,14 @@
 import os
-from tqdm import tqdm
 import json
 import itertools
+import time
+
+from tqdm import tqdm
 from attr_config import *
+
+old_time = time.time()
+print("开始训练数据预处理")
+
 
 # 创建预测处理数据存储文件夹
 os.makedirs(PREPROCESS_DATA_DIR, exist_ok=True)
@@ -167,3 +173,6 @@ with open(pos_coarse_file, "w") as f:
     f.writelines(pos_rets)
 with open(neg_coarse_file, "w") as f:
     f.writelines(neg_rets)
+
+current_time = time.time()
+print(f"训练数据预处理结束耗时：{str(current_time - old_time)}s")

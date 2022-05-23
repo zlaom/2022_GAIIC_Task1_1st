@@ -1,7 +1,12 @@
 import os
 from tqdm import tqdm
 import json
+import time
+
 from attr_config import *
+
+old_time = time.time()
+print("开始测试数据预处理")
 
 # 加载属性字典
 attr_dict_file = os.path.join(PREPROCESS_DATA_DIR, "attr_to_attrvals.json")
@@ -63,3 +68,6 @@ with open(ORIGIN_TEST_FILE, "r") as f:
 print(len(rets))
 with open(PREPROCESS_TEST_FILE, "w") as f:
     f.writelines(rets)
+
+current_time = time.time()
+print(f"测试数据预处理结束耗时：{str(current_time - old_time)}s")

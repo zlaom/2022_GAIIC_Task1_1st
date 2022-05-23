@@ -1,9 +1,13 @@
 import itertools
 import json
 import os
+import time
 
 from copy import deepcopy
 from attr_config import *
+
+old_time = time.time()
+print("属性关系字典生成")
 
 attr_dict_file = os.path.join(ORIGIN_DATA_DIR, "attr_to_attrvals.json")
 
@@ -131,3 +135,5 @@ for query, query_attr_list in attr_dict.items():
 attr_save_file = os.path.join(PREPROCESS_DATA_DIR, "attr_relation_dict.json")
 with open(attr_save_file, "w") as f:
     json.dump(attr_relation_dic, f, ensure_ascii=False, indent=4)
+current_time = time.time()
+print(f"属性关键字典生成结束：{str(current_time - old_time)}s")

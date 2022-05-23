@@ -2,9 +2,14 @@ import os
 import torch
 import json
 import argparse
+import time
+
 from model.attr_mlp import FinalCatModel
 from tqdm import tqdm
 from attr_config import *
+
+old_time = time.time()
+print("开始推理测试")
 
 # 测试参数
 parser = argparse.ArgumentParser("train_attr", add_help=False)
@@ -80,3 +85,6 @@ with open(
     encoding="utf-8",
 ) as f:
     f.writelines(result)
+
+current_time = time.time()
+print(f"测试耗时：{str(current_time - old_time)}s")

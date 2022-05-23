@@ -5,6 +5,7 @@ import random
 import torch
 import torch.optim as optim
 import numpy as np
+import time
 
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -16,6 +17,9 @@ from dataset.unequal_attr_match_dataset import (
     AttrIdMatchDataset,
     attr_id_match_collate_fn,
 )
+
+old_time = time.time()
+print("开始训练")
 
 # 训练参数
 parser = argparse.ArgumentParser("train_attr", add_help=False)
@@ -248,3 +252,6 @@ for fold_id, (train_index, test_index) in enumerate(kf.split(all_item_data)):
                 torch.save(model.state_dict(), best_save_path)
 
             logger.info(f"max acc: {max_acc} min loss: {min_loss}")
+
+current_time = time.time()
+print(f"训练耗时：{str(current_time - old_time)}s")
