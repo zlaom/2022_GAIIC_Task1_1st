@@ -16,7 +16,6 @@ done
 
 # ------------fold 0------------ #
 FOLD_ID=0
-
 for SEED in 0 1 2 3 4
 do
     echo "seed is: ${SEED}"
@@ -31,7 +30,6 @@ done
 
 # ------------fold 3------------ #
 FOLD_ID=3
-
 for SEED in 0 1 2 3 4
 do
     echo "seed is: ${SEED}"
@@ -46,7 +44,6 @@ done
 
 # ------------fold 5------------ #
 FOLD_ID=5
-
 for SEED in 0 1 2 3 4
 do
     echo "seed is: ${SEED}"

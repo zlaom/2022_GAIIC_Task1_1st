@@ -3,7 +3,7 @@ import json
 
 
 def main():
-    result_dir = 'temp/tmp_data/lhq_output/title_results'
+    result_dir = 'project/submmision'
     all_path_list = [
                         os.path.join(result_dir, 'fold0.txt'),
                         os.path.join(result_dir, 'fold3.txt'),
