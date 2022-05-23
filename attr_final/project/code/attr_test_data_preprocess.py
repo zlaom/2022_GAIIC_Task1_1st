@@ -1,20 +1,19 @@
 import os
 from tqdm import tqdm
 import json
-from config import *
+from attr_config import *
 
-attr_dict_file = f"{PREPROCESS_SAVE_DIR}/unequal_processed_data/attr_to_attrvals.json"
+# 加载属性字典
+attr_dict_file = os.path.join(PREPROCESS_DATA_DIR, "attr_to_attrvals.json")
 with open(attr_dict_file, "r") as f:
     attr_dict = json.load(f)
 
 
 # ----------------[test] 基础处理,根据query提取key_attr-------------------- #
 print("preprocess test data")
-save_test_file1 = os.path.join(PREPROCESS_SAVE_DIR, TEST_SAVE_NAME)
-
 rets = []
 years = ["2017年", "2018年", "2019年", "2020年", "2021年", "2022年"]
-with open(TEST_FILE, "r") as f:
+with open(ORIGIN_TEST_FILE, "r") as f:
     for i, data in enumerate(tqdm(f)):
         data = json.loads(data)
         title = data["title"]
@@ -62,5 +61,5 @@ with open(TEST_FILE, "r") as f:
         rets.append(json.dumps(data, ensure_ascii=False) + "\n")
 
 print(len(rets))
-with open(save_test_file1, "w") as f:
+with open(PREPROCESS_TEST_FILE, "w") as f:
     f.writelines(rets)

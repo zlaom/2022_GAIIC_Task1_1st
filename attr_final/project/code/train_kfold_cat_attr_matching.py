@@ -10,59 +10,54 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from sklearn.model_selection import KFold
 from utils.utils import adjust_learning_rate, my_custom_logger
-
-from config import *
-
-from model.attr_mlp import (
-    FinalCatModel,
-    FinalSeAttrIdMatch,
-)
-
+from attr_config import *
+from model.attr_mlp import FinalCatModel
 from dataset.unequal_attr_match_dataset import (
     AttrIdMatchDataset,
     attr_id_match_collate_fn,
 )
 
+# 训练参数
 parser = argparse.ArgumentParser("train_attr", add_help=False)
-parser.add_argument("--gpus", default="0", type=str)
-parser.add_argument("--fold", default=10, type=int)
+parser.add_argument("--gpu", default="0", type=str)
+parser.add_argument("--fold_num", default=10, type=int)
 parser.add_argument("--fold_ids", nargs="+", type=int)
 args = parser.parse_args()
 
 print(f"Trian folds {args.fold_ids} \n")
+os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
-# fix the seed for reproducibility
-# seed = 1010
+batch_size = 256
+max_epoch = 60
+eval_num = 3  # 随机验证次数
+pos_rate = 0.47  # 属性正例生成比例
+dropout = 0.3  # 图像特征dropout率
+threshold = 0.5  # 匹配置信度阈值
+LR_SCHED = True  # 余弦学习率
+lr = 5e-4
+min_lr = 5e-6
+warmup_epochs = 3
+
+# 固定随机种子
 seed = 11
 torch.manual_seed(seed)
 np.random.seed(seed)
 random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
-os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
+# 设置存储目录
+root_dir = f"{MODEL_SAVE_PATH}/attr_cat_s{seed}_e{max_epoch}_b{batch_size}_d{dropout}_p{pos_rate}/"
+log_dir = f"{root_dir}log/"
+best_save_dir = f"{root_dir}best/"
+save_name = "attr_model"
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+if not os.path.exists(best_save_dir):
+    os.makedirs(best_save_dir)
 
-batch_size = 256
-max_epoch = 60
-eval_num = 3
-
-pos_rate = 0.47
-dropout = 0.3
-threshold = 0.5
-
-root_dir = f"{MODEL_SAVE_PATH}/final_unequal_attr/cat_s{seed}_e{max_epoch}_b{batch_size}_drop{dropout}_pos{pos_rate}/"
-
-# adjust learning rate
-LR_SCHED = True
-lr = 5e-4
-min_lr = 5e-6
-warmup_epochs = 3
-
-# data
-coarse89588 = f"{PREPROCESS_SAVE_DIR}/unequal_processed_data/coarse89588.txt"
-fine50000 = f"{PREPROCESS_SAVE_DIR}/unequal_processed_data/fine50000.txt"
-
-attr_relation_dict_file = f"{PREPROCESS_SAVE_DIR}/unequal_processed_data/attr_relation_dict.json"
-attr_to_id = f"{PREPROCESS_SAVE_DIR}/unequal_processed_data/attr_to_id.json"
+# 加载关系字典以及id映射字典
+attr_relation_dict_file = f"{PREPROCESS_DATA_DIR}/attr_relation_dict.json"
+attr_to_id = f"{PREPROCESS_DATA_DIR}/attr_to_id.json"
 
 with open(attr_relation_dict_file, "r") as f:
     attr_relation_dict = json.load(f)
@@ -70,6 +65,9 @@ with open(attr_to_id, "r") as f:
     attr_to_id = json.load(f)
 
 # 加载数据
+coarse89588 = f"{PREPROCESS_DATA_DIR}/coarse89588.txt"
+fine50000 = f"{PREPROCESS_DATA_DIR}/fine50000.txt"
+
 all_item_data = []
 with open(coarse89588, "r") as f:
     for line in tqdm(f):
@@ -77,8 +75,6 @@ with open(coarse89588, "r") as f:
         # 训练集图文必须匹配
         if item["match"]["图文"]:
             all_item_data.append(item)
-        # if len(all_item_data) > 2000:
-        #     break
 
 with open(fine50000, "r") as f:
     for line in tqdm(f):
@@ -86,8 +82,6 @@ with open(fine50000, "r") as f:
         # 训练集图文必须匹配
         if item["match"]["图文"]:
             all_item_data.append(item)
-        # if len(all_item_data) > 2000:
-        #     break
 
 all_item_data = np.array(all_item_data)
 
@@ -95,32 +89,21 @@ dataset = AttrIdMatchDataset
 collate_fn = attr_id_match_collate_fn
 
 
-# 划分训练集 测试集
-kf = KFold(n_splits=args.fold, shuffle=True, random_state=seed)
+# 划分KFold训练集 验证集
+kf = KFold(n_splits=args.fold_num, shuffle=True, random_state=seed)
 
 for fold_id, (train_index, test_index) in enumerate(kf.split(all_item_data)):
     if fold_id in args.fold_ids:
-        # 设置随机种子
-        torch.manual_seed(seed+fold_id)
-        np.random.seed(seed+fold_id)
-        random.seed(seed+fold_id)
-
-        # 设置路径
-        log_dir = f"{root_dir}log/"
-        best_save_dir = f"{root_dir}best/"
-
-        if not os.path.exists(log_dir):
-            os.makedirs(log_dir)
-        if not os.path.exists(best_save_dir):
-            os.makedirs(best_save_dir)
-
-        save_name = "attr_model"
+        # 设置训练随机种子
+        torch.manual_seed(seed + fold_id)
+        np.random.seed(seed + fold_id)
+        random.seed(seed + fold_id)
 
         logger = my_custom_logger(os.path.join(log_dir, f"train{fold_id}.log"))
 
         logger.info(f"Begin train fold {fold_id}")
 
-        # dataset
+        # 构建Dataloader
         train_data = all_item_data[train_index]
         val_data = all_item_data[test_index]
 
@@ -150,17 +133,16 @@ for fold_id, (train_index, test_index) in enumerate(kf.split(all_item_data)):
             collate_fn=collate_fn,
         )
 
+        # 加载模型
         model = FinalCatModel(attr_num=80, dropout=dropout)
         print("model param num", sum(param.numel() for param in model.parameters()))
         model.cuda()
 
-        # optimizer
+        # 定义优化器以及Loss
         optimizer = optim.AdamW(model.parameters(), lr=lr)
-
-        # loss
         loss_fn = torch.nn.BCEWithLogitsLoss()
 
-        # evaluate
+        # 验证函数
         @torch.no_grad()
         def evaluate(model, val_dataloader):
             model.eval()
@@ -189,12 +171,12 @@ for fold_id, (train_index, test_index) in enumerate(kf.split(all_item_data)):
             acc = correct / total
             return acc.item(), np.mean(loss_list)
 
+        # 训练
         max_acc = 0
         min_loss = np.inf
         last_path = None
         correct = 0
         total = 0
-
         for epoch in range(max_epoch):
             model.train()
 
@@ -211,7 +193,6 @@ for fold_id, (train_index, test_index) in enumerate(kf.split(all_item_data)):
                 labels = labels.float().cuda()
                 logits = model(images, attr_ids)
 
-                # train acc
                 if (i + 1) % 100 == 0:
                     train_acc = correct / total
                     correct = 0

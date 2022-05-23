@@ -2,59 +2,34 @@ import os
 import torch
 import json
 import argparse
-from model.attr_mlp import  CatModel, SeAttrIdMatch2
+from model.attr_mlp import FinalCatModel
 from tqdm import tqdm
+from attr_config import *
 
+# 测试参数
 parser = argparse.ArgumentParser("train_attr", add_help=False)
-parser.add_argument("--gpus", default="0", type=str)
-parser.add_argument("--fold", default=10, type=int)
+parser.add_argument("--gpu", default="0", type=str)
+parser.add_argument("--fold_num", default=10, type=int)
+parser.add_argument("--test_type", default="loss", type=str)
 args = parser.parse_args()
 
-gpus = args.gpus
-batch_size = 1
-os.environ["CUDA_VISIBLE_DEVICES"] = gpus
+print(args.test_type)
+os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
-test_type = "loss"
-attr_to_id =  "data/tmp_data/unequal_processed_data/attr_to_id.json"
-# model_save_dir = "/home/mw/input/zlm_attr8892/best_pos_0.45/best_pos_0.45"
-model_save_dir1 = "/home/mw/input/zlm_attr8892/se_s1010_e100_b256_drop0.3_pos0.47/se_s1010_e100_b256_drop0.3_pos0.47/best"
-model_save_dir2 = "/home/mw/input/zlm_attr8892/cat_s11_e60_b256_drop0.3_pos0.47/cat_s11_e60_b256_drop0.3_pos0.47/best"
-
-print(test_type)
-
+# 加载id字典
+attr_to_id = f"{PREPROCESS_DATA_DIR}/attr_to_id.json"
 with open(attr_to_id, "r") as f:
     attr_to_id = json.load(f)
 
-# data
-# test_file = "/home/mw/project/lhq_project/unequal_data/new_data/test_data/equal_split_word_test.txt"
-test_file = "/home/mw/project/lhq_project/final_data/test_data_B/equal_split_word_test.txt"
-save_dir = "/home/mw/project/result/zlm/test_B_attr"
+# 结果存储路径
+os.makedirs(RESULT_SAVE_DIR, exist_ok=True)
 
-if not os.path.exists(save_dir):
-    os.makedirs(save_dir)
-
-# 加载多个模型
-# 生成属性to to
+# 加载多个CAT模型
 models = []
-# SE
-# for fold in range(args.fold):
-# for fold in [5, 9, 4, 3, 8]:
-#     model = SeAttrIdMatch2()
-#     model_checkpoint_path = os.path.join(
-#         model_save_dir1, f"attr_model_{test_type}_fold{fold}.pth"
-#     )
-#     model_checkpoint = torch.load(model_checkpoint_path)
-#     model.load_state_dict(model_checkpoint)
-#     model.cuda()
-#     model.eval()
-#     models.append(model)
-
-# CAT
-for fold in range(args.fold):
-# for fold in  [5, 8, 4, 3, 2]:
-    model = CatModel()
+for fold in range(args.fold_num):
+    model = FinalCatModel()
     model_checkpoint_path = os.path.join(
-        model_save_dir2, f"attr_model_{test_type}_fold{fold}.pth"
+        MODEL_SAVE_DIR, f"attr_model_{args.test_type}_fold{fold}.pth"
     )
     model_checkpoint = torch.load(model_checkpoint_path)
     model.load_state_dict(model_checkpoint)
@@ -63,10 +38,10 @@ for fold in range(args.fold):
     models.append(model)
 
 # 遍历测试集生成结果
-print(f"model len {len(models)}")
+print(f"model num {len(models)}")
 result = []
 count = 0
-with open(test_file, "r") as f:
+with open(PREPROCESS_TEST_FILE, "r") as f:
     for line in tqdm(f):
         item = json.loads(line)
         image = item["feature"]
@@ -85,25 +60,23 @@ with open(test_file, "r") as f:
                         item_result["match"][key_attr] = float(predict)
                     else:
                         item_result["match"][key_attr] += float(predict)
-                    # predict = torch.sigmoid(predict.cpu()) > 0.5
-                    # if key_attr not in item_result["match"].keys():
-                    #     item_result["match"][key_attr] = int(predict)
-                    # else:
-                    #     item_result["match"][key_attr] += int(predict)
 
         # kfold结果判断
         for key, value in item_result["match"].items():
-            if key!="图文":
+            if key != "图文":
                 if value > len(models) / 2.0:
                     item_result["match"][key] = 1
-                    count+=1
+                    count += 1
                 else:
                     item_result["match"][key] = 0
 
         result.append(json.dumps(item_result, ensure_ascii=False) + "\n")
 
-print(count)
+print(f"pos_num: {count}")
+
 with open(
-    os.path.join(save_dir, f"pos0.47_cat_seed11_int_{test_type}_{len(models)}fold_results.txt"), "w", encoding="utf-8"
+    os.path.join(RESULT_SAVE_DIR, RESULT_SAVE_NAME),
+    "w",
+    encoding="utf-8",
 ) as f:
     f.writelines(result)

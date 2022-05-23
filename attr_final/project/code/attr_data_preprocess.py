@@ -2,18 +2,14 @@ import os
 from tqdm import tqdm
 import json
 import itertools
-from config import *
+from attr_config import *
 
-preprocess_dir = os.path.join(PREPROCESS_SAVE_DIR, "unequal_processed_data")
+# 创建预测处理数据存储文件夹
+os.makedirs(PREPROCESS_DATA_DIR, exist_ok=True)
 
-mkdir_list = [PREPROCESS_SAVE_DIR, preprocess_dir]
-for mkdir in mkdir_list:
-    if not os.path.exists(mkdir):
-        os.makedirs(mkdir)
-
+# 原始数据路径
 attr_dict_file = os.path.join(ORIGIN_DATA_DIR, "attr_to_attrvals.json")
 fine_file = os.path.join(ORIGIN_DATA_DIR, "train_fine.txt")
-
 coarse_file = os.path.join(ORIGIN_DATA_DIR, "train_coarse.txt")
 
 # -----------------生成新的attr_dict并保存---------------------#
@@ -64,14 +60,14 @@ for query, attr_list in attr_dict.items():
         attr_list.append("长裙")
 
 # 保存新的属性字典
-attr_save_file = os.path.join(preprocess_dir, "attr_to_attrvals.json")
+attr_save_file = os.path.join(PREPROCESS_DATA_DIR, "attr_to_attrvals.json")
 with open(attr_save_file, "w") as f:
     json.dump(attr_dict, f, ensure_ascii=False, indent=4)
 
 
 # -------------[fine] 移除年份，统一大写，替换特殊属性-------------#
 print("preprocess fine data")
-new_fine_file = os.path.join(preprocess_dir, "fine50000.txt")
+new_fine_file = os.path.join(PREPROCESS_DATA_DIR, "fine50000.txt")
 rets = []
 years = ["2017年", "2018年", "2019年", "2020年", "2021年", "2022年"]
 
@@ -115,11 +111,10 @@ with open(fine_file, "r") as f:
 with open(new_fine_file, "w") as f:
     f.writelines(rets)
 
-
 # -------------[coarse] 移除年份，统一大写，替换特殊属性，提取属性-------------#
 print("preprocess coarse data")
-pos_coarse_file = os.path.join(preprocess_dir, "coarse89588.txt")
-neg_coarse_file = os.path.join(preprocess_dir, "coarse10412.txt")
+pos_coarse_file = os.path.join(PREPROCESS_DATA_DIR, "coarse89588.txt")
+neg_coarse_file = os.path.join(PREPROCESS_DATA_DIR, "coarse10412.txt")
 
 pos_rets = []
 neg_rets = []

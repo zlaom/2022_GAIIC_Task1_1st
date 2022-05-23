@@ -3,12 +3,9 @@ import json
 import os
 
 from copy import deepcopy
-from config import *
+from attr_config import *
 
-
-preprocess_dir = os.path.join(PREPROCESS_SAVE_DIR, "unequal_processed_data")
 attr_dict_file = os.path.join(ORIGIN_DATA_DIR, "attr_to_attrvals.json")
-
 
 # 加载原始的属性字典
 def load_attr_dict(file):
@@ -40,11 +37,7 @@ for query, attrs_list in attr_dict.items():
             if query == "闭合方式" and attr == "系带":
                 attr_dict[query][i][j] = "系带鞋"
 
-# print(attr_dict)
-
-
-# 生成相等字典
-attr_set = set()
+# 生成相等属性字典
 attr_list = []
 equal_attr = {}
 for query, attrs_list in attr_dict.items():
@@ -53,20 +46,13 @@ for query, attrs_list in attr_dict.items():
             equal_attrs_list = attrs_item_list.copy()
             equal_attrs_list.remove(attr)
             equal_attr[attr] = equal_attrs_list
-            attr_set.add(attr)
             attr_list.append(attr)
-# print(len(attr_set), len(attr_list))
-# print(equal_attr)
-
-# attr_save_file = os.path.join(preprocess_dir, "equal_attr_dict.json")
-# with open(attr_save_file, "w") as f:
-#     json.dump(equal_attr, f, ensure_ascii=False, indent=4)
 
 # 生成id转换字典
 attr_to_id = {}
 for attr_id, attr_value in enumerate(attr_list):
     attr_to_id[attr_value] = attr_id
-attr_to_id_save_file = os.path.join(preprocess_dir, "attr_to_id.json")
+attr_to_id_save_file = os.path.join(PREPROCESS_DATA_DIR, "attr_to_id.json")
 with open(attr_to_id_save_file, "w") as f:
     json.dump(attr_to_id, f, ensure_ascii=False, indent=4)
 
@@ -99,8 +85,6 @@ for item_category in category:
     for item in item_category:
         unsimilar_attr_dic[item] = unsimilar_attr
 
-# print(unsimilar_attr_dic)
-
 ## 生成同大类不相似字典
 same_big_category_attr_dic = {}
 for item_category in category:
@@ -111,8 +95,6 @@ for item_category in category:
         for _item in _item_category:
             same_big_category_attr.extend(attr_dict[_item])
         same_big_category_attr_dic[item] = same_big_category_attr
-
-# print(same_big_category_attr_dic)
 
 ## 生成关系字典
 attr_relation_dic = {}
@@ -146,8 +128,6 @@ for query, query_attr_list in attr_dict.items():
 
             attr_relation_dic[attr] = item_dic
 
-# print(attr_relation_dic)
-
-attr_save_file = os.path.join(preprocess_dir, "attr_relation_dict.json")
+attr_save_file = os.path.join(PREPROCESS_DATA_DIR, "attr_relation_dict.json")
 with open(attr_save_file, "w") as f:
     json.dump(attr_relation_dic, f, ensure_ascii=False, indent=4)
