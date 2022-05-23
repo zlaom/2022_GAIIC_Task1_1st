@@ -6,14 +6,14 @@ gpus = '0'
 os.environ['CUDA_VISIBLE_DEVICES'] = gpus
 
 # 内部链接
-attr_dict_file = '/home/mw/input/lhq_data4694/necessary_files/necessary_files/attr_to_attrvals.json'
-vocab_dict_save_file = '/home/mw/input/lhq_data4694/necessary_files/necessary_files/vocab/vocab_dict.json'
+attr_dict_file = 'temp/tmp_data/lhq_data/equal_processed_data/attr_to_attrvals.json'
+vocab_dict_save_file = 'temp/tmp_data/lhq_data/vocab/vocab_dict.json'
 
 # 外部连接
-ltp_path = '/home/mw/input/lhq_data4694/necessary_files/necessary_files/ltp_base'
-test_file = '/home/mw/input/track1_contest_4362/semi_testA.txt'
+ltp_path = 'input/pretrain_model/ltp_base/ltp.model'
+test_file = 'input/track1_contest_4362/semi_testB.txt'
 
-new_data_dir = '/home/mw/project/lhq_project/final_data'
+new_data_dir = 'temp/tmp_data'
 SAVE_DIR = new_data_dir
 test_save_dir = os.path.join(SAVE_DIR, 'test_data')
 if not os.path.exists(test_save_dir):

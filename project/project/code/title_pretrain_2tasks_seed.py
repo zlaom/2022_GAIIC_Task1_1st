@@ -9,11 +9,17 @@ from model.bert.bertconfig import BertConfig
 from model.fusemodel import DesignFuseModel
 
 from utils.lr_sched import adjust_learning_rate
+from utils.logging import my_custom_logger
+import argparse 
 
+parser = argparse.ArgumentParser('', add_help=False)
+parser.add_argument('--gpus', type=str)
+parser.add_argument('--fold_id', type=int)
+args = parser.parse_args()   
 
 seed = 0
-fold_id = 3
-gpus = '2'
+fold_id = args.fold_id
+gpus = args.gpus
 
 image_dropout = 0.3
 word_loss_scale = 2
@@ -36,6 +42,8 @@ save_dir = f'temp/tmp_data/lhq_output/title_pretrain/fold{fold_id}/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 save_name = f'fold{fold_id}_seed{seed}'
+
+logger = my_custom_logger(os.path.join(save_dir, f"training.log"))
 
 # adjust learning rate
 LR_SCHED = True
@@ -167,9 +175,9 @@ for epoch in range(max_epoch):
             correct = 0
             total = 0
             if LR_SCHED:
-                print('Epoch:[{}|{}], Acc:{:.2f}%, LR:{:.2e}'.format(epoch, max_epoch, train_acc*100, lr_now))
+                logger.info('Epoch:[{}|{}], Acc:{:.2f}%, LR:{:.2e}'.format(epoch, max_epoch, train_acc*100, lr_now))
             else:
-                print('Epoch:[{}|{}], Acc:{:.2f}%'.format(epoch, max_epoch, train_acc*100))
+                logger.info('Epoch:[{}|{}], Acc:{:.2f}%'.format(epoch, max_epoch, train_acc*100))
         proba = torch.sigmoid(logits.cpu())
         proba[proba>0.5] = 1
         proba[proba<=0.5] = 0
@@ -184,13 +192,13 @@ for epoch in range(max_epoch):
         
     acc = evaluate(model, val_dataloader)
     avg_loss = torch.mean(torch.tensor(loss_list)).item()
-    print('Acc:{:.2f}%, Loss:{:.5f}'.format(acc*100, avg_loss))
+    logger.info('Acc:{:.2f}%, Loss:{:.5f}'.format(acc*100, avg_loss))
     
     if acc > max_acc:
         max_acc = acc
         if last_path:
             os.remove(last_path)
-        save_path = save_dir + save_name + '_acc' + '{:.4f}'.format(acc) + '_loss'  + '{:.5f}'.format(avg_loss) + '.pth'
+        save_path = os.path.join(save_dir, save_name + '_' + '{:.4f}'.format(acc) + '_loss'  + '{:.5f}'.format(avg_loss) + '.pth')
         last_path = save_path
         torch.save(model.state_dict(), save_path)
     

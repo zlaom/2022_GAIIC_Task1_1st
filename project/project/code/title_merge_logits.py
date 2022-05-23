@@ -3,20 +3,14 @@ import json
 
 
 def main():
-    # all_path_list = [
-    #                  '/home/mw/project/result/fl/task_2_order_loss_0.1649.txt',
-    #                  '/home/mw/project/result/fl/task_2_11_loss_0.1477.txt',
-    #                  '/home/mw/project/result/fl/task_2_43_loss_0.1452.txt',
-    #                  ]
-
+    result_dir = 'temp/tmp_data/lhq_output/title_results'
     all_path_list = [
-                        '/home/mw/project/result/lhq/title/order_0_5/remake/float/fold0.txt',
-                        '/home/mw/project/result/lhq/title/order_0_5/remake/float/fold5.txt',
-                        '/home/mw/project/result/lhq/title/order_0_5/remake/float/foldr.txt'
+                        os.path.join(result_dir, 'fold0.txt'),
+                        os.path.join(result_dir, 'fold3.txt'),
+                        os.path.join(result_dir, 'fold5.txt'),
+                        os.path.join(result_dir, 'order.txt')
                      ]
-    
-    os.makedirs('./result', exist_ok=True)
-    output_path = '/home/mw/project/result/lhq/title/final_merge/order_0_5.txt'
+    output_path = os.path.join(result_dir, 'title_merge.txt')
 
     k_fold = len(all_path_list)
     k_fold_data_list = []
@@ -46,10 +40,6 @@ def main():
                     count += 1
             else:
                 data['match'][key] = 0
-
-        # if data['match']['图文'] == 1:
-        #     for key, val in data['match'].items():
-        #         data['match'][key] = 1
 
         rets.append(json.dumps(data, ensure_ascii=False)+'\n')
     

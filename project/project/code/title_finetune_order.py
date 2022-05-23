@@ -13,9 +13,8 @@ import argparse
 parser = argparse.ArgumentParser('', add_help=False)
 parser.add_argument('--gpus', type=str)
 parser.add_argument('--seed', type=int)
-parser.add_argument('--fold_id', type=int)
 parser.add_argument('--pretrain_seed', type=int)
-parser.add_argument('--ckpt_file', type=str)
+parser.add_argument('--pretrain_save_dir', type=str)
 args = parser.parse_args()   
 
 # fix the seed for reproducibility
@@ -24,7 +23,6 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
-fold_id = args.fold_id
 pretrain_seed = args.pretrain_seed
 
 
@@ -47,19 +45,27 @@ lr = 2e-5
 min_lr = 1e-5
 warmup_epochs = 0
 
-save_dir = f'temp/tmp_data/lhq_output/title_finetune_freeze_nobug/fold{fold_id}/seed{pretrain_seed}/'
+save_dir = f'temp/tmp_data/lhq_output/title_finetune/order/seed{pretrain_seed}/'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
-save_name = f'fold{fold_id}_seed{pretrain_seed}_seed{seed}'
+save_name = f'order_seed{pretrain_seed}_seed{seed}'
 
 FREEZE = True
 LOAD_CKPT = True
-ckpt_file = args.ckpt_file
+best_acc = 0.0
+ckpt_dir = os.path.join(args.pretrain_save_dir, 'order')
+for file in os.listdir(ckpt_dir):
+    filename, filesuffix = os.path.splitext(file)
+    if filesuffix == '.pth':
+        _acc_ = float(filename.split('_')[2])
+        if best_acc < _acc_:
+            best_acc = _acc_
+            ckpt_file = os.path.join(ckpt_dir, file)
+print(ckpt_file)
 
-
-# seed
-train_file = f'temp/tmp_data/lhq_data/divided/title/seed{fold_id}/fine9000.txt,temp/tmp_data/lhq_data/divided/title/seed{fold_id}/coarse9000.txt,temp/tmp_data/lhq_data/divided/title/seed{fold_id}/coarse9000.txt'
-val_file = f'temp/tmp_data/lhq_data/divided/title/seed{fold_id}/fine700.txt,temp/tmp_data/lhq_data/divided/title/seed{fold_id}/coarse1412.txt'
+# order
+train_file = 'temp/tmp_data/lhq_data/divided/title/order/fine9000.txt,temp/tmp_data/lhq_data/divided/title/order/coarse9000.txt,temp/tmp_data/lhq_data/divided/title/order/coarse9000.txt'
+val_file = 'temp/tmp_data/lhq_data/divided/title/order/fine700.txt,temp/tmp_data/lhq_data/divided/title/order/coarse1412.txt'
 
 vocab_file = 'temp/tmp_data/lhq_data/vocab/vocab.txt' 
 
@@ -112,7 +118,7 @@ if FREEZE:
     for name, param in model.named_parameters():
     	if param.requires_grad==False:
     		print(name,param.size())
-    
+      
 # optimizer 
 # optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=lr)

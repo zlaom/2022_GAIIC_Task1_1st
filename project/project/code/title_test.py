@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm 
 
 from model.bert.bertconfig import BertConfig
-from model.fusemodel import FuseModel2Tasks
+from model.fusemodel import DesignFuseModel
 
 # fix the seed for reproducibility
 seed = 0
@@ -20,27 +20,29 @@ split_layers = 0
 fuse_layers = 6
 n_img_expand = 6
 
-test_file = '/home/mw/project/lhq_project/final_data/test_data/equal_split_word_test.txt'
-vocab_file = '/home/mw/input/lhq_data4694/necessary_files/necessary_files/vocab/vocab.txt'
+test_file = 'temp/tmp_data/test_data/equal_split_word_test.txt'
+vocab_file = 'temp/tmp_data/lhq_data/vocab/vocab.txt'
 
-out_dir = '/home/mw/project/result/lhq/title/order_0_5/remake/int/'
+out_dir = 'temp/tmp_data/lhq_output/title_results'
 os.makedirs(out_dir, exist_ok=True)
 
+best_model_dir = 'project/best_model/title'
 model_folds = [
-    '/home/mw/input/lhq_data4694/order_0_5_fold/order_0_5_fold/fold0_seed0_seed2_0.9465_0.14620.pth',
-    '/home/mw/input/lhq_data4694/order_0_5_fold/order_0_5_fold/fold5_seed0_seed3_0.9493_0.13545.pth',
-    '/home/mw/input/lhq_data4694/order_0_5_fold/order_0_5_fold/order_seed0_seed0_0.9484_0.13816.pth',
+    os.path.join(best_model_dir, 'fold0.pth'),
+    os.path.join(best_model_dir, 'fold3.pth'),
+    os.path.join(best_model_dir, 'fold5.pth'),
+    os.path.join(best_model_dir, 'order.pth'),
 ]
 for fold_id, model_fold in enumerate(model_folds):
-    fold_id = model_fold.split('/')[-1][4]
     ckpt_path = model_fold
-    out_file = os.path.join(out_dir, 'fold'+str(fold_id)+'.txt')
-    print(fold_id)
+    filename, filesuffix = os.path.splitext(model_fold.split('/')[-1])
+    out_file = os.path.join(out_dir, filename +'.txt')
+    print(filename)
 
     # model
     split_config = BertConfig(num_hidden_layers=split_layers)
     fuse_config = BertConfig(num_hidden_layers=fuse_layers)
-    model = FuseModel2Tasks(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand, word_match=True)
+    model = DesignFuseModel(split_config, fuse_config, vocab_file, n_img_expand=n_img_expand, word_match=True)
     model.load_state_dict(torch.load(ckpt_path))
     model.cuda()
 
@@ -63,12 +65,12 @@ for fold_id, model_fold in enumerate(model_folds):
                 logits, word_logits, word_mask = model(image, split)
                 logits = logits.cpu()
                 logits = torch.sigmoid(logits)
-                logits[logits>0.5] = 1
-                logits[logits<=0.5] = 0
+                # logits[logits>0.5] = 1
+                # logits[logits<=0.5] = 0
 
             match = {}
-            # match['图文'] = logits.item()
-            match['图文'] = int(logits.item())
+            match['图文'] = logits.item()
+            # match['图文'] = int(logits.item())
             for query, attr in key_attr.items():
                 match[query] = 1
             
