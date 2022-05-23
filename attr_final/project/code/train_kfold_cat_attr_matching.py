@@ -46,9 +46,8 @@ random.seed(seed)
 torch.backends.cudnn.benchmark = True
 
 # 设置存储目录
-root_dir = f"{MODEL_SAVE_PATH}/attr_cat_s{seed}_e{max_epoch}_b{batch_size}_d{dropout}_p{pos_rate}/"
-log_dir = f"{root_dir}log/"
-best_save_dir = f"{root_dir}best/"
+log_dir = f"{ATTR_MODEL_SAVE_DIR}/log"
+best_save_dir = f"{ATTR_MODEL_SAVE_DIR}/best"
 save_name = "attr_model"
 if not os.path.exists(log_dir):
     os.makedirs(log_dir)
@@ -232,14 +231,20 @@ for fold_id, (train_index, test_index) in enumerate(kf.split(all_item_data)):
             evl_acc, evl_loss = np.mean(evl_acc), np.mean(evl_loss)
             logger.info(f"eval mean acc: {evl_acc} mean loss:{evl_loss}")
 
-            if evl_acc > max_acc:
-                max_acc = evl_acc
-                best_save_path = best_save_dir + save_name + f"_acc_fold{fold_id}.pth"
-                torch.save(model.state_dict(), best_save_path)
+            # 保存acc最小
+            # if evl_acc > max_acc:
+            #     max_acc = evl_acc
+            #     best_save_path = os.path.join(
+            #         best_save_dir, save_name + f"_acc_fold{fold_id}.pth"
+            #     )
+            #     torch.save(model.state_dict(), best_save_path)
 
+            # 保存loss最小
             if evl_loss < min_loss:
                 min_loss = evl_loss
-                best_save_path = best_save_dir + save_name + f"_loss_fold{fold_id}.pth"
+                best_save_path = os.path.join(
+                    best_save_dir, save_name + f"_loss_fold{fold_id}.pth"
+                )
                 torch.save(model.state_dict(), best_save_path)
 
             logger.info(f"max acc: {max_acc} min loss: {min_loss}")

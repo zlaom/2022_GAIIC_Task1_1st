@@ -29,7 +29,7 @@ models = []
 for fold in range(args.fold_num):
     model = FinalCatModel()
     model_checkpoint_path = os.path.join(
-        MODEL_SAVE_DIR, f"attr_model_{args.test_type}_fold{fold}.pth"
+        ATTR_MODEL_SAVE_DIR, f"best/attr_model_{args.test_type}_fold{fold}.pth"
     )
     model_checkpoint = torch.load(model_checkpoint_path)
     model.load_state_dict(model_checkpoint)
