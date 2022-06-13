@@ -16,10 +16,10 @@ import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.tensorboard import SummaryWriter
-from utils.utils import warmup_lr_schedule, step_lr_schedule
+from utils.utils import warmup_lr_schedule, step_lr_schedule, cosine_lr_schedule
 
-from data_pre.cls_match_dataset import ITMDataset, cls_collate_fn, ITMAttrDataset
-from models.split_model import SESplitBert
+from data_pre.title_task_2_dataset import NewFuseReplaceDataset, cls_collate_fn, cls_collate_fn_finetune
+from models.fuse_model import FuseModel2TasksNewDropout
 from models.hero_bert.bert_config import BertConfig
 import tqdm
 
@@ -42,30 +42,33 @@ def set_seed_logger(dataset_cfg):
 
 
 def init_model(model_cfg, device):
-    split_config = BertConfig(num_hidden_layers=6)
-    
-    model = SESplitBert(split_config, 'data/split_word/vocab/vocab.txt')
-    model.load_state_dict(torch.load('checkpoints/train/se_split_43_h6_best_acc.pth'))
+    split_config = BertConfig(num_hidden_layers=0)
+    fuse_config = BertConfig(num_hidden_layers=6)
+    model = FuseModel2TasksNewDropout(split_config, fuse_config, 'data/fl_split_word/vocab/vocab.txt', n_img_expand=6)
+    #model.load_state_dict(torch.load('checkpoints/train/p_0.6_yes_new_80_mean_split_order_h8_epd6_best_acc.pth'))
     model = model.to(device)
     return model
 
 
 def get_dataloader(dataset_cfg):
-    
-    train_path = './data/equal_split_word/title/43_coarse9000.txt,./data/equal_split_word/title/43_fine9000.txt'
-    val_path = './data/equal_split_word/title/43_fine700.txt,./data/equal_split_word/title/43_coarse1412.txt'    
-
-    train_dataset = ITMDataset(train_path, )
-    val_dataset = ITMDataset(val_path, )
+    seed = 43
+    train_path = f'./data/fl_equal_split_word/title/{seed}_fine40000.txt,./data/fl_equal_split_word/coarse89588.txt'
+    val_path = f'./data/fl_equal_split_word/title/{seed}_fine700.txt,./data/fl_equal_split_word/title/{seed}_coarse1412.txt'    
+    attr_dict_path = './data/fl_equal_processed_data/attr_to_attrvals.json'
+    vocab_dict_path = './data/fl_split_word/vocab/vocab_dict.json'
+    with open(vocab_dict_path, 'r') as f:
+        vocab_dict = json.load(f)
+    train_dataset = NewFuseReplaceDataset(train_path, attr_dict_path, vocab_dict, is_train=True)
+    val_dataset = NewFuseReplaceDataset(val_path, attr_dict_path, vocab_dict, is_train=False)
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=dataset_cfg['TRAIN_BATCH'], shuffle=True,
         num_workers=dataset_cfg['NUM_WORKERS'], drop_last=True, pin_memory=True, collate_fn=cls_collate_fn)
     val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=dataset_cfg['VAL_BATCH'], shuffle=False,
-        num_workers=dataset_cfg['NUM_WORKERS'], drop_last=False, pin_memory=True, collate_fn=cls_collate_fn)
+        num_workers=dataset_cfg['NUM_WORKERS'], drop_last=False, pin_memory=True, collate_fn=cls_collate_fn_finetune)
 
-    return train_loader, val_loader, 18000, 2124
+    return train_loader, val_loader, len(train_dataset.items), len(val_dataset.items)
 
 
 def train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn, device):
@@ -76,15 +79,26 @@ def train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn, d
     total, correct = 0., 0.
     for step, all_dic in enumerate(train_dataloader):
         optimizer.zero_grad()
+        # if epoch==0:
+        #     warmup_lr_schedule(optimizer, step, optim_cfg['WARMUP_STEPS'], optim_cfg['WARMUP_LR'], optim_cfg['LR'])
+        cosine_lr_schedule(optimizer, epoch, max_epoch=dataset_cfg['EPOCHS'], init_lr=1e-4, min_lr=2e-5)
 
-        images, splits, labels = all_dic
+        images, splits, labels, split_index, split_label = all_dic
         images = images.to(device)
+        split_label = split_label.to(device)
         labels = labels.to(device)
-        output = model(images, splits)
+        output, split_embedding, attention_mask = model(images, splits, word_match=True)
         
+        W = split_embedding.shape[1]
+        split_index = split_index[:, :W].to(torch.bool)
+        split_index = split_index.to(device)
+        attention_mask = attention_mask.to(torch.bool)
+        all_mask = attention_mask & split_index
+        split_output = split_embedding[all_mask == True]
+
         _, predicted = torch.max(output.data, 1)
 
-        loss = loss_fn(output, labels)
+        loss = loss_fn(output, labels) + loss_fn(split_output, split_label)
         total += labels.size(0)
         correct += (predicted == labels).sum()
         loss.backward()
@@ -125,14 +139,14 @@ def test_epoch(model, val_dataloader, loss_fn, device):
 
 def train(model_cfg, dataset_cfg, optim_cfg, device):
     set_seed_logger(dataset_cfg)
-    output_folder = os.path.join(dataset_cfg['OUT_PATH'], 'finetune')
+    output_folder = os.path.join(dataset_cfg['OUT_PATH'], 'train')
     os.makedirs(output_folder, exist_ok=True)
 
     model = init_model(model_cfg, device)
     train_dataloader, val_dataloader, train_num, val_num = get_dataloader(dataset_cfg)
     num_train_optimization_steps = len(train_dataloader) * dataset_cfg['EPOCHS']
     
-    optimizer = torch.optim.AdamW(params=model.parameters(), lr=1e-5)
+    optimizer = torch.optim.AdamW(params=model.parameters(), lr=5e-5)
 
     loss_fn_1 = nn.CrossEntropyLoss().cuda()
     writer = SummaryWriter(log_dir=dataset_cfg['OUT_PATH'])
@@ -141,10 +155,9 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
     logging.info('Test num = %d', val_num)
     logging.info('Num steps = %d', num_train_optimization_steps)
     
-
+    best_loss, best_acc = 2, 0
     for epoch in range(dataset_cfg['EPOCHS']):
-        # step_lr_schedule(optimizer, epoch, optim_cfg['LR'], optim_cfg['MIN_LR'], optim_cfg['WEIGHT_DECAY'])
-        # test_epoch(model, val_dataloader, loss_fn_1, device)
+        step_lr_schedule(optimizer, epoch, optim_cfg['LR'], optim_cfg['MIN_LR'], optim_cfg['WEIGHT_DECAY'])
         train_loss = train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn_1,  device)
         val_loss, acc = test_epoch(model, val_dataloader, loss_fn_1, device)
         writer.add_scalar(f'CE/train', train_loss, epoch)
@@ -153,9 +166,16 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
         logging.info(' Train Epoch %d/%s Finished | Train Loss: %f | Val loss: %f | Val acc: %f',
                      epoch + 1, dataset_cfg['EPOCHS'], 
                      train_loss, val_loss,  acc)
+        if acc > best_acc:
+            best_acc = acc
+            torch.save(model.state_dict(),
+                    os.path.join(output_folder, 'task2_image_0.2_attr_80_43_h6_epd6_best_acc.pth'))
+        if best_loss > val_loss:
+            best_loss = val_loss
+            torch.save(model.state_dict(),
+                    os.path.join(output_folder, 'task2_image_0.2_attr_80_43_h6_epd6_best_loss.pth'))
         
-        torch.save(model.state_dict(),
-                os.path.join(output_folder, 'se_seed_2_h6_finetune_best_acc_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
+        logging.info(' best acc is %f   |   best loss is %f', best_acc, best_loss)
         
 
 
@@ -168,7 +188,7 @@ if __name__ == '__main__':
     with open(yaml_path, 'r', encoding='utf-8') as f:
         config = yaml.load(f.read())
     model_cfg = config['MODEL']['ALL_MATCH']
-    dataset_cfg = config['FINETUNE']
+    dataset_cfg = config['ALL_TRAIN']
     optim_cfg = config['OPTIM']
     print(dataset_cfg)
     print('sb ayre')

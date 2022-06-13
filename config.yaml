@@ -74,7 +74,7 @@ ALL_TRAIN:
   VAL_PATH: './data/equal_processed_data/fine_val.txt,./data/equal_processed_data/coarse1412.txt'
   ATTR_PATH: ./data/equal_processed_data/attr_to_attrvals.json
   OUT_PATH: checkpoints/
-  EPOCHS: 600
+  EPOCHS: 400
   RATIO: 0.95
   SHUFFLE: FALSE
   SEED: 3

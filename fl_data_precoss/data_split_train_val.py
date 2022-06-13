@@ -4,7 +4,7 @@ import json
 import yaml
 import numpy as np
 
-seed_num = 2
+seed_num = 11
 np.random.seed(seed_num)
 
 #seed_num = 'order'

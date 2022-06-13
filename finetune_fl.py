@@ -19,7 +19,7 @@ from torch.utils.tensorboard import SummaryWriter
 from utils.utils import warmup_lr_schedule, step_lr_schedule
 
 from data_pre.cls_match_dataset import ITMDataset, cls_collate_fn, ITMAttrDataset
-from models.fuse_model import FuseModel
+from models.fuse_model import FuseModel, FuseModel2TasksNewDropout
 from models.hero_bert.bert_config import BertConfig
 import tqdm
 
@@ -44,16 +44,16 @@ def set_seed_logger(dataset_cfg):
 def init_model(model_cfg, device):
     split_config = BertConfig(num_hidden_layers=0)
     fuse_config = BertConfig(num_hidden_layers=6)
-    model = FuseModel(split_config, fuse_config, 'data/fl_split_word/vocab/vocab.txt', n_img_expand=6)
-    model.load_state_dict(torch.load('checkpoints/train/new_image_0.2_attr_80_2022_h6_epd6_best_acc.pth'))
+    model = FuseModel2TasksNewDropout(split_config, fuse_config, 'data/fl_split_word/vocab/vocab.txt', n_img_expand=6)
+    model.load_state_dict(torch.load('checkpoints/train/task2_image_0.2_attr_80_43_h6_epd6_best_acc.pth'))
     model = model.to(device)
     return model
 
 
 def get_dataloader(dataset_cfg):
-    
-    train_path = './data/fl_equal_split_word/title/2_coarse9000.txt,./data/fl_equal_split_word/title/2_fine9000.txt,./data/fl_equal_split_word/title/2_coarse9000.txt'
-    val_path = './data/fl_equal_split_word/title/2_fine700.txt,./data/fl_equal_split_word/title/2_coarse1412.txt'    
+    seed = 43
+    train_path = f'./data/fl_equal_split_word/title/{seed}_coarse9000.txt,./data/fl_equal_split_word/title/{seed}_fine9000.txt,./data/fl_equal_split_word/title/{seed}_coarse9000.txt'
+    val_path = f'./data/fl_equal_split_word/title/{seed}_fine700.txt,./data/fl_equal_split_word/title/{seed}_coarse1412.txt'    
 
     train_dataset = ITMDataset(train_path, )
     val_dataset = ITMDataset(val_path, )
@@ -68,7 +68,7 @@ def get_dataloader(dataset_cfg):
     return train_loader, val_loader, 12000, 2124
 
 
-def train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn, device):
+def train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn, device, val_dataloader):
     torch.cuda.empty_cache()
     model.train()
     
@@ -95,6 +95,14 @@ def train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn, d
             logging.info('  Epoch: %d/%s, Step: %d/%d, Train_Loss: %f, Train_attr_match_Acc: %f ',
                          epoch + 1, dataset_cfg['EPOCHS'], step + 1, len(train_dataloader),
                          loss.item(), correct/total)
+        if (step + 1) % 60 == 0:
+            val_loss, acc = test_epoch(model, val_dataloader, loss_fn, device)
+            logging.info(' Train Epoch %d/%s Finished | | Val loss: %f | Val acc: %f',
+                     epoch + 1, dataset_cfg['EPOCHS'], 
+                      val_loss,  acc)
+            output_folder = os.path.join(dataset_cfg['OUT_PATH'], 'finetune')
+            torch.save(model.state_dict(),
+            os.path.join(output_folder, 'task_2_43_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
 
     train_loss = sum(train_loss_list) / train_num
     return train_loss
@@ -119,7 +127,7 @@ def test_epoch(model, val_dataloader, loss_fn, device):
             loss = loss_fn(output, labels)
             val_loss_list.append(loss.item())
             
-        
+    model.train()
     return np.mean(val_loss_list), correct.item() / total
 
 
@@ -145,7 +153,7 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
     for epoch in range(dataset_cfg['EPOCHS']):
         # step_lr_schedule(optimizer, epoch, optim_cfg['LR'], optim_cfg['MIN_LR'], optim_cfg['WEIGHT_DECAY'])
         # test_epoch(model, val_dataloader, loss_fn_1, device)
-        train_loss = train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn_1,  device)
+        train_loss = train_epoch(epoch, model, train_dataloader, train_num, optimizer, loss_fn_1,  device, val_dataloader)
         val_loss, acc = test_epoch(model, val_dataloader, loss_fn_1, device)
         writer.add_scalar(f'CE/train', train_loss, epoch)
         writer.add_scalar(f'ACC/val', acc, epoch)
@@ -155,7 +163,7 @@ def train(model_cfg, dataset_cfg, optim_cfg, device):
                      train_loss, val_loss,  acc)
         
         torch.save(model.state_dict(),
-                os.path.join(output_folder, 'double_2_image_0.2_80_seed_2_finetune_best_loss_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
+                os.path.join(output_folder, 'task_2_43_epoch{:}_val_loss{:.4f}_val_acc{:.4f}_.pth'.format(epoch, val_loss, acc)))
         
 
 
