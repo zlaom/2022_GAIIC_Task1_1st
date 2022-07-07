@@ -1,8 +1,0 @@
-baseline/
-output/
-data/pretrained_model/
-*.txt
-__pycache__
-project_old/
-project/input/
-project/temp/
